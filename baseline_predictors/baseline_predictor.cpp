@@ -2,7 +2,7 @@
 #include <math.h>
 
 #define GLOBAL_BIAS 3.608612994454291
-#define NUM_BINS 30
+#define NUM_BINS 40
 #define DAYS_PER_BIN 70
 
 Model::Model(int M, int N, string filename, double eps, double max_epochs):
@@ -13,6 +13,7 @@ Model::~Model() {}
 
 double Model::grad_common(int user, int rating, double b_u, double alpha_u,
                           int time, double b_i, double b_bin) {
+    //cout << "reached" << endl;
     return (rating - GLOBAL_BIAS - b_u
             - alpha_u * this->devUser(time, this->t_u[user - 1])
             - b_i - b_bin);
@@ -102,8 +103,8 @@ void Model::train() {
     this->b_i -= 0.5;
     this->b_bin -= 0.5;
     // Initialize the mean date of user ratings
-    cout << "Calculating user date avgs" << endl;
-    //this->user_date_avg(this->params.Y);
+    //cout << "Calculating user date avgs" << endl;
+
     this->t_u = Col<double>(this->params.M, fill::randu);
 
     for (int e = 0; e < this->params.max_epochs; e++) {
@@ -117,11 +118,12 @@ void Model::train() {
             int rating = p[3];
             int time = p[2];
             int bin = time / DAYS_PER_BIN;
-
+            //cout << time << endl;
+            //cout << "reached" << endl;
             double del_common = this->grad_common(user, rating, this->b_u[user - 1],
                     this->alpha_u[user - 1], time, this->b_i[movie - 1],
                     this->b_bin(movie - 1, bin));
-            cout << "reached" << endl;
+            //cout << "reached" << endl;
             double del_b_u = this->grad_b_u(del_common, this->b_u[user - 1]);
             double del_alpha_u = this->grad_alpha_u(del_common, user, time, this->alpha_u[user - 1]);
             double del_b_bin = this->grad_b_bin(del_common, this->b_i[movie - 1]);
