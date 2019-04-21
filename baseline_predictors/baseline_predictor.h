@@ -1,4 +1,4 @@
-#include "netflix_data.h"
+#include "../data_processing/data.h"
 #include <armadillo>
 
 using namespace arma;
@@ -6,7 +6,7 @@ using namespace arma;
 typedef struct {
     int M;
     int N;
-    NetflixData Y;
+    Data Y;
     double eps;
     double max_epochs;
 } ModelParams;
@@ -19,7 +19,7 @@ class Model {
     Col<double> alpha_u;
 
     void userAvg(
-            NetflixData Y);
+            Data Y);
 
     double grad_b_u(
             int rating,
@@ -57,9 +57,9 @@ class Model {
     Model(
         int M,
         int N,
-        NetflixData Y,
+        Data Y,
         double eps = 0.01,
-        double max_epochs = 200
+        double max_epochs = 40
      );
 
     double trainErr();
