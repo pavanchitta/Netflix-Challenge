@@ -21,7 +21,7 @@ class Model {
 
     void user_date_avg(
             Data Y);
-            
+
     double grad_common(
             int user,
             int rating,
@@ -30,12 +30,15 @@ class Model {
             int time,
             double b_i,
             double b_bin
-    )
+    );
+
     double grad_b_u(
             double del_common);
 
     double grad_alpha_u(
-            double del_common);
+            double del_common,
+            int user,
+            int time);
 
     double grad_b_i(
             double del_common);

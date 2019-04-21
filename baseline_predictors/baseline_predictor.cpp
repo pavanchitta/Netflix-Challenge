@@ -6,7 +6,7 @@
 #define DAYS_PER_BIN 70
 
 Model::Model(int M, int N, Data Y, double eps, double max_epochs) {
-    this->params = {M, N, Y, eps, max_epochs};
+    this->params = { M, N, Y, eps, max_epochs };
 }
 
 Model::~Model() {}
@@ -15,23 +15,23 @@ double Model::grad_common(int user, int rating, double b_u, double alpha_u,
                           int time, double b_i, double b_bin) {
     return (rating - GLOBAL_BIAS - b_u
             - alpha_u * this->devUser(time, this->t_u[user - 1])
-            - b_i - b_bin)
+            - b_i - b_bin);
 }
 
-double Model::grad_b_u(del_common) {
+double Model::grad_b_u(double del_common) {
     double eta = 2.67 * pow(10, -3);
     double reg = 2.55 * pow(10, -2);
     return -2 * eta * del_common + eta * reg * 2 * b_u;
 }
 
-double Model::grad_alpha_u(del_common) {
+double Model::grad_alpha_u(double del_common, int user, int time) {
     double eta = 3.11 * pow(10, -6);
     double reg = 395 * pow(10, -2);
     return -2 * eta * devUser(time, this->t_u[user - 1]) * del_common
            + eta * reg * 2 * alpha_u;
 }
 
-double Model::grad_b_i(del_common) {
+double Model::grad_b_i(double del_common) {
     double eta = 0.488 * pow(10, -3);
     double reg = 2.55 * pow(10, -2);
     return -2 * eta * del_common + eta * reg * 2 * b_i;
@@ -115,9 +115,9 @@ void Model::train() {
 
             double del_common = this->grad_common(user, rating, this->b_u[user - 1],
                     this->alpha_u[user - 1], time, this->b_i[movie - 1],
-                    this->b_bin(movie - 1, bin))
+                    this->b_bin(movie - 1, bin));
             double del_b_u = this->grad_b_u(del_common);
-            double del_alpha_u = this->grad_alpha_u(del_common);
+            double del_alpha_u = this->grad_alpha_u(del_common, user, time);
             double del_b_bin = this->grad_b_bin(del_common);
             double del_b_i = this->grad_b_i(del_common);
 
