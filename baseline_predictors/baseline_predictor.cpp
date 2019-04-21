@@ -1,4 +1,4 @@
-#include "matrix_factor_bias.h"
+#include "baseline_predictor.h"
 #include <math.h>
 
 #define GLOBAL_BIAS 3.608612994454291
@@ -24,7 +24,7 @@ void Model::userAvg(Data Y) {
     for (ptr = this->params.Y.begin(), ptr < this->params.Y.end(); ptr++) {
         vector<int> p = *ptr;
         int user = p[0];
-        int time = p.[2];
+        int time = p[2];
         this->t_u[user - 1] += time;
         num_ratings[user - 1] += 1
     }
@@ -94,7 +94,7 @@ double Model::trainErr() {
         int user = p[0];
         int movie = p[1];
         int rating = p[3];
-        int time = p.[2];
+        int time = p[2];
         int bin = time / DAYS_PER_BIN;
 
         loss_err += pow(rating - GLOBAL_BIAS - this->b_u[user - 1] -
@@ -143,7 +143,7 @@ void Model::train() {
             int user = p[0];
             int movie = p[1];
             int rating = p[3];
-            int time = p.[2];
+            int time = p[2];
             int bin = time / DAYS_PER_BIN;
 
             double del_b_u = this->grad_b_u(user, rating, this->b_u[user - 1],
