@@ -18,6 +18,9 @@ class Model {
     Col<double> b_u;
     Col<double> alpha_u;
 
+    void userAvg(
+            NetflixData Y);
+
     double grad_b_u(
             int rating,
             double b_u,

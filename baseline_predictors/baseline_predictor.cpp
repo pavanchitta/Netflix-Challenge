@@ -16,52 +16,70 @@ Model::Model(
     this->params = { M, N, Y, eps, max_epochs };
 }
 
-double Model::grad_b_u(int rating, double b_u, double alpha_u, int time,
+void Model::userAvg(NetflixData Y) {
+
+    this->t_u = Col<double>(this->params.M, fill::randu);
+    num_ratings = Col<double>(this->params.M, fill::randu);
+    for (ptr = this->params.Y.begin(), ptr < this->params.Y.end(); ptr++) {
+        NetflixPoint p = *ptr;
+        int user = p.user;
+        int time = p.time;
+        this->t_u[user - 1] += time;
+        num_ratings[user - 1] += 1
+    }
+
+    for (int i = 0; i < this->params.M; i++) {
+        this->t_u[i] /= num_ratings[i]
+    }
+
+}
+
+double Model::grad_b_u(int user, int rating, double b_u, double alpha_u, int time,
                        double b_i, double b_bin) {
 
         double eta = 2.67 * pow(10, -3);
         double reg = 2.55 * pow(10, -2);
 
         return -2 * eta * (rating - GLOBAL_BIAS - b_u -
-                           alpha_u * this->devUser(time, this->userAvg(user)) -
+                           alpha_u * this->devUser(time, this->t_u[user - 1]) -
                            b_i - b_bin) +
                 eta * reg * 2 * b_u;
 }
 
-double Model::grad_alpha_u(int rating, double b_u, double alpha_u, int time,
+double Model::grad_alpha_u(int user, int rating, double b_u, double alpha_u, int time,
                        double b_i, double b_bin) {
 
         double eta = 3.11 * pow(10, -6);
         double reg = 395 * pow(10, -2);
 
-        return -2 * eta * devUser(time, this-userAvg(user)) *
+        return -2 * eta * devUser(time, this->userAvg(user)) *
                (rating - GLOBAL_BIAS - b_u -
-                alpha_u * this->devUser(time, this->userAvg(user)) -
+                alpha_u * this->devUser(time, this->t_u[user - 1]) -
                 b_i - b_bin) +
                 eta * reg * 2 * alpha_u;
 }
 
 
-double Model::grad_b_i(int rating, double b_u, double alpha_u, int time,
+double Model::grad_b_i(int user, int rating, double b_u, double alpha_u, int time,
                        double b_i, double b_bin) {
 
           double eta = 0.488 * pow(10, -3);
           double reg = 2.55 * pow(10, -2);
 
           return -2 * eta * (rating - GLOBAL_BIAS - b_u -
-                             alpha_u * this->devUser(time, this->userAvg(user)) -
+                             alpha_u * this->devUser(time, this->t_u[user - 1]) -
                              b_i - b_bin) +
                  eta * reg * 2 * b_i;
 }
 
-double Model::grad_b_bin(int rating, double b_u, double alpha_u, int time,
+double Model::grad_b_bin(int user, int rating, double b_u, double alpha_u, int time,
                        double b_i, double b_bin) {
 
           double eta = 0.115 * pow(10, -3);
           double reg = 9.29 * pow(10, -2);
 
           return -2 * eta * (rating - GLOBAL_BIAS - b_u -
-                             alpha_u * this->devUser(time, this->userAvg(user)) -
+                             alpha_u * this->devUser(time, this->t_u[user - 1]) -
                              b_i - b_bin) +
                  eta * reg * 2 * b_bin;
 }
@@ -79,7 +97,7 @@ double Model::trainErr() {
         int bin = time / DAYS_PER_BIN;
 
         loss_err += pow(rating - GLOBAL_BIAS - this->b_u[user - 1] -
-                        alpha_u[user - 1] * this->devUser(time, this->userAvg(user)) -
+                        alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1]) -
                         this->b_i[movie - 1] - this->b_bin[movie - 1][bin], 2);
     }
 
@@ -111,6 +129,11 @@ void Model::train() {
     this->b_i -= 0.5;
     this->b_bin -= 0.5;
 
+    // Initialize the mean date of user ratings
+    this->user_date_avg(this->params.Y)
+
+
+
     for (int e = 0; e < this->params.max_epochs; e++) {
         printf("Running Epoch %d............", e);
         NetflixData::iterator ptr;
@@ -122,19 +145,19 @@ void Model::train() {
             int time = p.time;
             int bin = time / DAYS_PER_BIN;
 
-            double del_b_u = this->grad_b_u(rating, this->b_u[user - 1],
+            double del_b_u = this->grad_b_u(user, rating, this->b_u[user - 1],
                     this->alpha[user - 1], time, this->b_i[movie - 1],
                     this->b_bin[movie - 1][bin]);
 
-            double del_alpha_u = this->grad_alpha_u(rating, this->b_u[user - 1],
+            double del_alpha_u = this->grad_alpha_u(user, rating, this->b_u[user - 1],
                     this->alpha[user - 1], time, this->b_i[movie - 1],
                     this->b_bin[movie - 1][bin]);
 
-            double del_V = this->grad_b_bin(rating, this->b_u[user - 1],
+            double del_V = this->grad_b_bin(user, rating, this->b_u[user - 1],
                     this->alpha[user - 1], time, this->b_i[movie - 1],
                     this->b_bin[movie - 1][bin]);
 
-            double del_b_i = this->grad_b_i(rating, this->b_u[user - 1],
+            double del_b_i = this->grad_b_i(user, rating, this->b_u[user - 1],
                     this->alpha[user - 1], time, this->b_i[movie - 1],
                     this->b_bin[movie - 1][bin]);
 
