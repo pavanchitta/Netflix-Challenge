@@ -45,8 +45,8 @@ double Model::grad_b_bin(double del_common, double b_bin) {
 }
 
 void Model::user_date_avg(Data Y) {
-    this->t_u = Col<double>(this->params.M, fill::randu);
-    Col<double> num_ratings = Col<double>(this->params.M, fill::randu);
+    this->t_u = Col<double>(this->params.M, fill::zeros);
+    Col<double> num_ratings = Col<double>(this->params.M, fill::zeros);
     this->params.Y.reset();
     int i = 0;
     while (this->params.Y.hasNext()) {
