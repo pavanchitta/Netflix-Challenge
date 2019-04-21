@@ -5,7 +5,7 @@
 #define NUM_BINS 30
 #define DAYS_PER_BIN 70
 
-Model::Model(int M, int N, string filename, double eps, double max_epochs): 
+Model::Model(int M, int N, string filename, double eps, double max_epochs):
 params( { M, N, Data(filename), eps, max_epochs } ) {
 }
 
@@ -46,10 +46,12 @@ double Model::grad_b_bin(double del_common, double b_bin) {
 void Model::user_date_avg(Data Y) {
     this->t_u = Col<double>(this->params.M, fill::randu);
     Col<double> num_ratings = Col<double>(this->params.M, fill::randu);
-    vector<vector<int> >::iterator ptr;
     this->params.Y.reset();
+    int i = 0;
     while (this->params.Y.hasNext()) {
-        vector<int> p = *ptr;
+        cout <<  i << endl;
+        i++;
+        vector<int> p = this->params.Y.nextLine();
         int user = p[0];
         int time = p[2];
         this->t_u[user - 1] += time;
@@ -71,11 +73,10 @@ double Model::devUser(int time, int user_avg) {
 }
 
 double Model::trainErr() {
-    vector<vector<int> >::iterator ptr;
     double loss_err = 0.0;
     this->params.Y.reset();
     while (this->params.Y.hasNext()) {
-        vector<int> p = *ptr;
+        vector<int> p = this->params.Y.nextLine();
         int user = p[0];
         int movie = p[1];
         int rating = p[3];
@@ -101,15 +102,16 @@ void Model::train() {
     this->b_i -= 0.5;
     this->b_bin -= 0.5;
     // Initialize the mean date of user ratings
-    this->user_date_avg(this->params.Y);
+    cout << "Calculating user date avgs" << endl;
+    //this->user_date_avg(this->params.Y);
+    this->t_u = Col<double>(this->params.M, fill::randu);
 
     for (int e = 0; e < this->params.max_epochs; e++) {
         cout << "Running Epoch " << e << endl;
-        vector<vector<int> >::iterator ptr;
         this->params.Y.reset();
         while (this->params.Y.hasNext()) {
 
-            vector<int> p = *ptr;
+            vector<int> p = this->params.Y.nextLine();
             int user = p[0];
             int movie = p[1];
             int rating = p[3];
@@ -119,6 +121,7 @@ void Model::train() {
             double del_common = this->grad_common(user, rating, this->b_u[user - 1],
                     this->alpha_u[user - 1], time, this->b_i[movie - 1],
                     this->b_bin(movie - 1, bin));
+            cout << "reached" << endl;
             double del_b_u = this->grad_b_u(del_common, this->b_u[user - 1]);
             double del_alpha_u = this->grad_alpha_u(del_common, user, time, this->alpha_u[user - 1]);
             double del_b_bin = this->grad_b_bin(del_common, this->b_i[movie - 1]);
