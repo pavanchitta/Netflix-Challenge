@@ -22,41 +22,29 @@ class Model {
     void user_date_avg(
             Data Y);
 
-    double grad_b_u(
+    double grad_common(
             int user,
             int rating,
             double b_u,
             double alpha_u,
             int time,
             double b_i,
-            double b_bin);
+            double b_bin
+    );
+
+    double grad_b_u(
+            double del_common);
 
     double grad_alpha_u(
+            double del_common,
             int user,
-            int rating,
-            double b_u,
-            double alpha_u,
-            int time,
-            double b_i,
-            double b_bin);
+            int time);
 
     double grad_b_i(
-            int user,
-            int rating,
-            double b_u,
-            double alpha_u,
-            int time,
-            double b_i,
-            double b_bin);
+            double del_common);
 
     double grad_b_bin(
-            int user,
-            int rating,
-            double b_u,
-            double alpha_u,
-            int time,
-            double b_i,
-            double b_bin);
+            double del_common);
 
     public:
     Model(
