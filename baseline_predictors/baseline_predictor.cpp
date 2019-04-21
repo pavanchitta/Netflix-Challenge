@@ -8,22 +8,23 @@
 Model::Model(
         int M,
         int N,
-        NetflixData Y,
-        double eps,
-        double max_epochs
+        Data Y,
+        double eps = 0.01,
+        double max_epochs = 40
      ) {
 
     this->params = { M, N, Y, eps, max_epochs };
 }
 
-void Model::userAvg(NetflixData Y) {
+void Model::userAvg(Data Y) {
 
     this->t_u = Col<double>(this->params.M, fill::randu);
     num_ratings = Col<double>(this->params.M, fill::randu);
+    vector<vector<int> >::iterator ptr;
     for (ptr = this->params.Y.begin(), ptr < this->params.Y.end(); ptr++) {
-        NetflixPoint p = *ptr;
-        int user = p.user;
-        int time = p.time;
+        vector<int> p = *ptr;
+        int user = p[0];
+        int time = p.[2];
         this->t_u[user - 1] += time;
         num_ratings[user - 1] += 1
     }
@@ -85,15 +86,15 @@ double Model::grad_b_bin(int user, int rating, double b_u, double alpha_u, int t
 }
 
 double Model::trainErr() {
-    NetflixData::iterator ptr;
+    vector<vector<int> >::iterator ptr;
     double loss_err = 0.0;
 
     for (ptr = this->params.Y.begin(), ptr < this->params.Y.end(); ptr++) {
-        NetflixPoint p = *ptr;
-        int user = p.user;
-        int movie = p.movie;
-        int rating = p.rating
-        int time = p.time;
+        vector<int> p = *ptr;
+        int user = p[0];
+        int movie = p[1];
+        int rating = p[3];
+        int time = p.[2];
         int bin = time / DAYS_PER_BIN;
 
         loss_err += pow(rating - GLOBAL_BIAS - this->b_u[user - 1] -
@@ -135,14 +136,14 @@ void Model::train() {
 
 
     for (int e = 0; e < this->params.max_epochs; e++) {
-        printf("Running Epoch %d............", e);
-        NetflixData::iterator ptr;
+        cout << "Running Epoch " << e << endl;
+        vector<vector<int> >::iterator ptr;
         for (ptr = this->params.Y.begin(), ptr < this->params.Y.end(); ptr++) {
-            NetflixPoint p = *ptr;
-            int user = p.user;
-            int movie = p.movie;
-            int rating = p.rating;
-            int time = p.time;
+            vector<int> p = *ptr;
+            int user = p[0];
+            int movie = p[1];
+            int rating = p[3];
+            int time = p.[2];
             int bin = time / DAYS_PER_BIN;
 
             double del_b_u = this->grad_b_u(user, rating, this->b_u[user - 1],
@@ -167,6 +168,6 @@ void Model::train() {
             this->b[movie - 1][bin] -= del_b_bin;
         }
 
-        printf("Error %f..................", trainErr());
+        cout << "Error " << trainErr() << endl;
     }
 }
