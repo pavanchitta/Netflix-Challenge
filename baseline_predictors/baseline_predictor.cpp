@@ -47,7 +47,8 @@ void Model::user_date_avg(Data Y) {
     this->t_u = Col<double>(this->params.M, fill::randu);
     Col<double> num_ratings = Col<double>(this->params.M, fill::randu);
     vector<vector<int> >::iterator ptr;
-    for (ptr = this->params.Y.get_begin(); ptr < this->params.Y.get_end(); ptr++) {
+    this->params.Y.reset();
+    while (this->params.Y.hasNext()) {
         vector<int> p = *ptr;
         int user = p[0];
         int time = p[2];
@@ -72,7 +73,8 @@ double Model::devUser(int time, int user_avg) {
 double Model::trainErr() {
     vector<vector<int> >::iterator ptr;
     double loss_err = 0.0;
-    for (ptr = this->params.Y.get_begin(); ptr < this->params.Y.get_end(); ptr++) {
+    this->params.Y.reset();
+    while (this->params.Y.hasNext()) {
         vector<int> p = *ptr;
         int user = p[0];
         int movie = p[1];
@@ -104,7 +106,8 @@ void Model::train() {
     for (int e = 0; e < this->params.max_epochs; e++) {
         cout << "Running Epoch " << e << endl;
         vector<vector<int> >::iterator ptr;
-        for (ptr = this->params.Y.get_begin(); ptr < this->params.Y.get_end(); ptr++) {
+        this->params.Y.reset();
+        while (this->params.Y.hasNext()) {
 
             vector<int> p = *ptr;
             int user = p[0];
