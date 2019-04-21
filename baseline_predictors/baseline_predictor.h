@@ -17,11 +17,13 @@ class Model {
     Col<double> b_i;
     Col<double> b_u;
     Col<double> alpha_u;
+    Col<double> t_u;
 
-    void userAvg(
+    void user_date_avg(
             Data Y);
 
     double grad_b_u(
+            int user,
             int rating,
             double b_u,
             double alpha_u,
@@ -30,6 +32,7 @@ class Model {
             double b_bin);
 
     double grad_alpha_u(
+            int user,
             int rating,
             double b_u,
             double alpha_u,
@@ -38,6 +41,7 @@ class Model {
             double b_bin);
 
     double grad_b_i(
+            int user,
             int rating,
             double b_u,
             double alpha_u,
@@ -46,6 +50,7 @@ class Model {
             double b_bin);
 
     double grad_b_bin(
+            int user,
             int rating,
             double b_u,
             double alpha_u,
