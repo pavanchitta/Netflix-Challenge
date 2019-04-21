@@ -1,4 +1,4 @@
-#include "data.h"
+#include "../data_processing/data.h"
 #include <armadillo>
 
 using namespace arma;
@@ -27,7 +27,8 @@ class Model {
             int y, 
             Col<double> Vj, 
             double ai, 
-            double bj
+            double bj,
+            double s
             );
 
     Col<double> gradV(
@@ -35,7 +36,8 @@ class Model {
             int y, 
             Col<double> Vj, 
             double ai, 
-            double bj
+            double bj,
+            double s
             );
 
     double gradA(
@@ -43,7 +45,8 @@ class Model {
             int y, 
             Col<double> Vj, 
             double ai, 
-            double bj
+            double bj,
+            double s
             );
 
     double gradB(
@@ -51,7 +54,8 @@ class Model {
             int y, 
             Col<double> Vj, 
             double ai, 
-            double bj
+            double bj,
+            double s
             );
 
     public:
@@ -61,7 +65,7 @@ class Model {
         int K, 
         double eta, 
         double reg, 
-        Data Y, 
+        string filename, 
         double mu,
         double eps = 0.01,
         double max_epochs = 200
