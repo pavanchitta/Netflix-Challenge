@@ -1,38 +1,87 @@
 #include "matrix_factor_bias.h"
+#include <math.h>
+
+#define GLOBAL_BIAS 3.608612994454291
+#define NUM_BINS 30
+#define DAYS_PER_BIN 70
 
 Model::Model(
-        int M, 
-        int N, 
-        int K, 
-        double eta, 
-        double reg, 
-        NetflixData Y, 
-        double mu,
+        int M,
+        int N,
+        NetflixData Y,
         double eps,
         double max_epochs
      ) {
-    
-    this->params = { M, N, K, eta, reg, Y, mu, eps, max_epochs };
+
+    this->params = { M, N, Y, eps, max_epochs };
 }
 
-double Model::gradU(Col<double> Ui, int y, Col<double> Vj, double ai, double bj) {
-    return as_scalar(this->params.eta * ((this->params.reg * Ui) - Vj * 
-            (y - this->params.mu - dot(Ui, Vj) - ai - bj)));
+void Model::userAvg(NetflixData Y) {
+
+    this->t_u = Col<double>(this->params.M, fill::randu);
+    num_ratings = Col<double>(this->params.M, fill::randu);
+    for (ptr = this->params.Y.begin(), ptr < this->params.Y.end(); ptr++) {
+        NetflixPoint p = *ptr;
+        int user = p.user;
+        int time = p.time;
+        this->t_u[user - 1] += time;
+        num_ratings[user - 1] += 1
+    }
+
+    for (int i = 0; i < this->params.M; i++) {
+        this->t_u[i] /= num_ratings[i]
+    }
+
 }
 
-double Model::gradV(Col<double> Ui, int y, Col<double> Vj, double ai, double bj) {
-    return as_scalar(this->params.eta * ((this->params.reg * Vj) - Ui * 
-           (y - this->params.mu - dot(Ui, Vj) - ai - bj)));
-} 
+double Model::grad_b_u(int user, int rating, double b_u, double alpha_u, int time,
+                       double b_i, double b_bin) {
 
-double Model::gradA(Col<double> Ui, int y, Col<double> Vj, double ai, double bj) {
-    return as_scalar(this->params.eta * ((this->params.reg * ai) - 
-          (y - this->params.mu - dot(Ui, Vj) - ai - bj)));
+        double eta = 2.67 * pow(10, -3);
+        double reg = 2.55 * pow(10, -2);
+
+        return -2 * eta * (rating - GLOBAL_BIAS - b_u -
+                           alpha_u * this->devUser(time, this->t_u[user - 1]) -
+                           b_i - b_bin) +
+                eta * reg * 2 * b_u;
 }
 
-double Model::gradB(Col<double> Ui, int y, Col<double> Vj, double ai, double bj) {
-    return as_scalar(this->params.eta * ((this->params.reg * bj) - 
-          (y - this->params.mu - dot(Ui, Vj) - ai - bj)));
+double Model::grad_alpha_u(int user, int rating, double b_u, double alpha_u, int time,
+                       double b_i, double b_bin) {
+
+        double eta = 3.11 * pow(10, -6);
+        double reg = 395 * pow(10, -2);
+
+        return -2 * eta * devUser(time, this->userAvg(user)) *
+               (rating - GLOBAL_BIAS - b_u -
+                alpha_u * this->devUser(time, this->t_u[user - 1]) -
+                b_i - b_bin) +
+                eta * reg * 2 * alpha_u;
+}
+
+
+double Model::grad_b_i(int user, int rating, double b_u, double alpha_u, int time,
+                       double b_i, double b_bin) {
+
+          double eta = 0.488 * pow(10, -3);
+          double reg = 2.55 * pow(10, -2);
+
+          return -2 * eta * (rating - GLOBAL_BIAS - b_u -
+                             alpha_u * this->devUser(time, this->t_u[user - 1]) -
+                             b_i - b_bin) +
+                 eta * reg * 2 * b_i;
+}
+
+double Model::grad_b_bin(int user, int rating, double b_u, double alpha_u, int time,
+                       double b_i, double b_bin) {
+
+          double eta = 0.115 * pow(10, -3);
+          double reg = 9.29 * pow(10, -2);
+
+          return -2 * eta * (rating - GLOBAL_BIAS - b_u -
+                             alpha_u * this->devUser(time, this->t_u[user - 1]) -
+                             b_i - b_bin) +
+                 eta * reg * 2 * b_bin;
 }
 
 double Model::trainErr() {
@@ -41,12 +90,15 @@ double Model::trainErr() {
 
     for (ptr = this->params.Y.begin(), ptr < this->params.Y.end(); ptr++) {
         NetflixPoint p = *ptr;
-        int i = p.i;
-        int j = p.j;
-        int y = p.y;
+        int user = p.user;
+        int movie = p.movie;
+        int rating = p.rating
+        int time = p.time;
+        int bin = time / DAYS_PER_BIN;
 
-        loss_err += pow((y - this->params.mu - dot(U.col(i - 1), V.col(j - 1))
-                - a[i - 1] - b[j - 1]), 2);
+        loss_err += pow(rating - GLOBAL_BIAS - this->b_u[user - 1] -
+                        alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1]) -
+                        this->b_i[movie - 1] - this->b_bin[movie - 1][bin], 2);
     }
 
     return loss_err;
@@ -54,41 +106,65 @@ double Model::trainErr() {
 
 Model::~Model() {}
 
+double Model::devUser(int time, int user_avg) {
+    if (time > user_avg) {
+      return pow(time - user_avg, beta)
+    }
+    else {
+      return -1 * pow(user_avg - time, beta)
+    }
+}
+
 void Model::train() {
-    this->U = Mat<double>(this->params.K, this->params.M, fill::randu);
-    this->V = Mat<double>(this->params.K, this->params.N, fill::randu);
-    this->a = Col<double>(this->params.M, fill::randu);
-    this->b = Col<double>(this->params.N, fill::randu);
+
+    // Intialize matrices for user and movie biases.
+    this->b_u = Col<double>(this->params.M, fill::randu);
+    this->alpha_u = Col<double>(this->params.M, fill::randu);
+    this->b_i = Col<double>(this->params.N, fill::randu);
+    this->b_bin = Mat<double>(this->params.N, NUM_BINS, fill::randu)
+
+    // Normalize random entries to be between -0.5 and 0.5.
+    this->b_u -= 0.5;
+    this->alpha_u -= 0.5;
+    this->b_i -= 0.5;
+    this->b_bin -= 0.5;
+
+    // Initialize the mean date of user ratings
+    this->user_date_avg(this->params.Y)
 
 
-    this->U -= 1;
-    this->V -= 1;
-    this->a -= 1;
-    this->b -= 1;
 
     for (int e = 0; e < this->params.max_epochs; e++) {
         printf("Running Epoch %d............", e);
         NetflixData::iterator ptr;
         for (ptr = this->params.Y.begin(), ptr < this->params.Y.end(); ptr++) {
             NetflixPoint p = *ptr;
-            int i = p.i;
-            int j = p.j;
-            int y = p.y;
+            int user = p.user;
+            int movie = p.movie;
+            int rating = p.rating;
+            int time = p.time;
+            int bin = time / DAYS_PER_BIN;
 
-            double del_U = this->gradU(this->U.col(i - 1), p.y, this->V.col(j - 1), 
-                    this->a[i - 1], this->b[i - 1]);
-            double del_V = this->gradV(this->U.col(i - 1), p.y, this->V.col(j - 1), 
-                    this->a[i - 1], this->b[i - 1]);
-            double del_A = this->gradA(this->U.col(i - 1), p.y, this->V.col(j - 1), 
-                    this->a[i - 1], this->b[i - 1]);
-            double del_B = this->gradB(this->U.col(i - 1), p.y, this->V.col(j - 1), 
-                    this->a[i - 1], this->b[i - 1]);
+            double del_b_u = this->grad_b_u(user, rating, this->b_u[user - 1],
+                    this->alpha[user - 1], time, this->b_i[movie - 1],
+                    this->b_bin[movie - 1][bin]);
 
-            
-            this->U.col(i - 1) -= del_U;
-            this->V.col(j - 1) -= del_V;
-            this->a[i - 1] -= del_A;
-            this->b[j - 1] -= del_B;
+            double del_alpha_u = this->grad_alpha_u(user, rating, this->b_u[user - 1],
+                    this->alpha[user - 1], time, this->b_i[movie - 1],
+                    this->b_bin[movie - 1][bin]);
+
+            double del_V = this->grad_b_bin(user, rating, this->b_u[user - 1],
+                    this->alpha[user - 1], time, this->b_i[movie - 1],
+                    this->b_bin[movie - 1][bin]);
+
+            double del_b_i = this->grad_b_i(user, rating, this->b_u[user - 1],
+                    this->alpha[user - 1], time, this->b_i[movie - 1],
+                    this->b_bin[movie - 1][bin]);
+
+            this->b_u[user - 1] -= del_b_u;
+            this->alpha_u[user - 1] -= del_alpha_u;
+            this->b_i[movie - 1] -= del_b_i;
+            this->b[movie - 1][bin] -= del_b_bin;
         }
 
         printf("Error %f..................", trainErr());
