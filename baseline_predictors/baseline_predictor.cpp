@@ -50,7 +50,7 @@ void Model::user_date_avg(Data Y) {
     this->params.Y.reset();
     int i = 0;
     while (this->params.Y.hasNext()) {
-        cout <<  i << endl;
+        //cout <<  i << endl;
         i++;
         vector<int> p = this->params.Y.nextLine();
         int user = p[0];
@@ -76,7 +76,9 @@ double Model::devUser(int time, int user_avg) {
 double Model::trainErr() {
     double loss_err = 0.0;
     this->params.Y.reset();
+    int num_points = 0;
     while (this->params.Y.hasNext()) {
+        num_points ++;
         vector<int> p = this->params.Y.nextLine();
         int user = p[0];
         int movie = p[1];
@@ -87,7 +89,7 @@ double Model::trainErr() {
                         alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1]) -
                         this->b_i[movie - 1] - this->b_bin(movie - 1, bin), 2);
     }
-    return loss_err;
+    return loss_err/num_points;
 }
 
 void Model::train() {
@@ -105,7 +107,8 @@ void Model::train() {
     // Initialize the mean date of user ratings
     //cout << "Calculating user date avgs" << endl;
 
-    this->t_u = Col<double>(this->params.M, fill::randu);
+    //this->t_u = Col<double>(this->params.M, fill::randu);
+    this->user_date_avg(this->params.Y);
 
     for (int e = 0; e < this->params.max_epochs; e++) {
         cout << "Running Epoch " << e << endl;
