@@ -54,7 +54,7 @@ class Model {
     Model(
         int M,
         int N,
-        Data Y,
+        string filename,
         double eps = 0.01,
         double max_epochs = 40
      );

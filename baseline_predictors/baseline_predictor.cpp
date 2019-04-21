@@ -5,8 +5,8 @@
 #define NUM_BINS 30
 #define DAYS_PER_BIN 70
 
-Model::Model(int M, int N, Data Y, double eps, double max_epochs) {
-    this->params = { M, N, Y, eps, max_epochs };
+Model::Model(int M, int N, string filename, double eps, double max_epochs): 
+params( { M, N, Data(filename), eps, max_epochs } ) {
 }
 
 Model::~Model() {}
