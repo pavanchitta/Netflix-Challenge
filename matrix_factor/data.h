@@ -1,16 +1,20 @@
 #include <string>
 #include <vector>
+#include <fstream>
 
 using namespace std;
 
 class Data {
     private:
         string filename;
+        ifstream* csv;
         vector<vector<int> > vectors;
-        vector<vector<int> > fill_vector (string filename);
+
+        int vec_inx;
+        void fill_vector ();
     public:
         Data (string f);
-        vector<vector<int> >::iterator get_begin();
-        vector<vector<int> >::iterator get_end();
-
+        vector<int> nextLine();
+        bool hasNext();
+        void reset();
 };

@@ -1,23 +1,39 @@
 #include <iostream>
 #include <fstream>
 #include <armadillo>
+#include <assert.h>
 
 #include "data.h"
 
-Data::Data (string f) {
-    vectors = fill_vector(f);
+#define CHUNK 10000
+
+Data::Data (string f) : csv(new ifstream(f))  {
+    vec_inx = 0;
+    filename = f;
 }
 
-vector<vector<int> > Data::fill_vector (string filename) {
-    ifstream csv(filename);
-    vector<vector<int> > datas;
+void Data::reset() {
+    vec_inx = 0;
+    csv = new ifstream(filename);
+}
+
+void Data::fill_vector () {
+    assert(vec_inx >= this->vectors.size());
+
+    this->vectors.clear();
+
     string delimeter = " ";
 
-    int a = 0;
+    int lines_read = 0;
 
-    for(string line; getline(csv, line); ) {
+    for(string line; getline(*this->csv, line); lines_read++) {
+        if (lines_read > CHUNK) {
+            break;
+        }
+
+        lines_read++;
+
         vector<int> data;
-        a++;
 
         auto start = 0U;
         auto end = line.find(delimeter);
@@ -28,20 +44,24 @@ vector<vector<int> > Data::fill_vector (string filename) {
             end = line.find(delimeter, start);
         }
         data.push_back(stod(line.substr(start, end)));
-        datas.push_back(data);
-
-        if (a % 10000 == 0)
-            cout << a << endl;
+        this->vectors.push_back(data);
     }
-    return datas;
+
+    vec_inx = 0;
 }
 
-vector<vector<int> >::iterator Data::get_begin () {
-    return vectors.begin();
+vector<int> Data::nextLine() {
+    if (vec_inx >= this->vectors.size()) {
+        fill_vector();
+    }
+
+    assert(this->vectors.size() > 0);
+    
+    return this->vectors[vec_inx++];
 }
 
-vector<vector<int> >::iterator Data::get_end () {
-    return vectors.end();
+bool Data::hasNext() {
+    return vec_inx < this->vectors.size() || !csv->eof(); 
 }
 
 void print_vector(vector<int> v) {
