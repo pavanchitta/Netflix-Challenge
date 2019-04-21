@@ -1,4 +1,7 @@
 #include "matrix_factor_bias.h"
+#include <stdio.h>
+
+using namespace std;
 
 Model::Model(
         int M, 
@@ -6,23 +9,22 @@ Model::Model(
         int K, 
         double eta, 
         double reg, 
-        NetflixData Y, 
+        Data Y, 
         double mu,
         double eps,
         double max_epochs
-     ) {
-    
-    this->params = { M, N, K, eta, reg, Y, mu, eps, max_epochs };
+     ) : params( { M, N, K, eta, reg, Y, mu, eps, max_epochs } ){
 }
 
-double Model::gradU(Col<double> Ui, int y, Col<double> Vj, double ai, double bj) {
-    return as_scalar(this->params.eta * ((this->params.reg * Ui) - Vj * 
-            (y - this->params.mu - dot(Ui, Vj) - ai - bj)));
+Col<double> Model::gradU(Col<double> Ui, int y, Col<double> Vj, double ai, double bj) {
+    Col<double> res = this->params.eta * ((this->params.reg * Ui) - Vj * 
+            (y - this->params.mu - dot(Ui, Vj) - ai - bj));
+    return res;
 }
 
-double Model::gradV(Col<double> Ui, int y, Col<double> Vj, double ai, double bj) {
-    return as_scalar(this->params.eta * ((this->params.reg * Vj) - Ui * 
-           (y - this->params.mu - dot(Ui, Vj) - ai - bj)));
+Col<double> Model::gradV(Col<double> Ui, int y, Col<double> Vj, double ai, double bj) {
+    return this->params.eta * ((this->params.reg * Vj) - Ui * 
+           (y - this->params.mu - dot(Ui, Vj) - ai - bj));
 } 
 
 double Model::gradA(Col<double> Ui, int y, Col<double> Vj, double ai, double bj) {
@@ -36,14 +38,14 @@ double Model::gradB(Col<double> Ui, int y, Col<double> Vj, double ai, double bj)
 }
 
 double Model::trainErr() {
-    NetflixData::iterator ptr;
+    vector<vector<int> >::iterator ptr;
     double loss_err = 0.0;
 
-    for (ptr = this->params.Y.begin(), ptr < this->params.Y.end(); ptr++) {
-        NetflixPoint p = *ptr;
-        int i = p.i;
-        int j = p.j;
-        int y = p.y;
+    for (ptr = this->params.Y.get_begin(); ptr < this->params.Y.get_end(); ptr++) {
+        vector<int> p = *ptr;
+        int i = p[0];
+        int j = p[1];
+        int y = p[3];
 
         loss_err += pow((y - this->params.mu - dot(U.col(i - 1), V.col(j - 1))
                 - a[i - 1] - b[j - 1]), 2);
@@ -67,21 +69,21 @@ void Model::train() {
     this->b -= 1;
 
     for (int e = 0; e < this->params.max_epochs; e++) {
-        printf("Running Epoch %d............", e);
-        NetflixData::iterator ptr;
-        for (ptr = this->params.Y.begin(), ptr < this->params.Y.end(); ptr++) {
-            NetflixPoint p = *ptr;
-            int i = p.i;
-            int j = p.j;
-            int y = p.y;
+        cout << "Running Epoch " << e << endl;
+        vector<vector<int> >::iterator ptr;
+        for (ptr = this->params.Y.get_begin(); ptr != this->params.Y.get_end(); ++ptr) {
+            vector<int> p = *ptr;
+            int i = p[0];
+            int j = p[1];
+            int y = p[3];
 
-            double del_U = this->gradU(this->U.col(i - 1), p.y, this->V.col(j - 1), 
+            Col<double> del_U = this->gradU(this->U.col(i - 1), y, this->V.col(j - 1), 
                     this->a[i - 1], this->b[i - 1]);
-            double del_V = this->gradV(this->U.col(i - 1), p.y, this->V.col(j - 1), 
+            Col<double> del_V = this->gradV(this->U.col(i - 1), y, this->V.col(j - 1), 
                     this->a[i - 1], this->b[i - 1]);
-            double del_A = this->gradA(this->U.col(i - 1), p.y, this->V.col(j - 1), 
+            double del_A = this->gradA(this->U.col(i - 1), y, this->V.col(j - 1), 
                     this->a[i - 1], this->b[i - 1]);
-            double del_B = this->gradB(this->U.col(i - 1), p.y, this->V.col(j - 1), 
+            double del_B = this->gradB(this->U.col(i - 1), y, this->V.col(j - 1), 
                     this->a[i - 1], this->b[i - 1]);
 
             
@@ -91,6 +93,6 @@ void Model::train() {
             this->b[j - 1] -= del_B;
         }
 
-        printf("Error %f..................", trainErr());
+        cout << "Error " << trainErr() << endl;
     }
 }

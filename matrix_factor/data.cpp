@@ -1,22 +1,8 @@
 #include <iostream>
-#include <string>
 #include <fstream>
 #include <armadillo>
 
-
-using namespace std;
-
-class Data {
-    private:
-        string filename;
-        vector<vector<int> > vectors;
-        vector<vector<int> > fill_vector (string filename);
-    public:
-        Data (string f);
-        vector<vector<int> >::iterator get_begin();
-        vector<vector<int> >::iterator get_end();
-
-};
+#include "data.h"
 
 Data::Data (string f) {
     vectors = fill_vector(f);
@@ -27,9 +13,11 @@ vector<vector<int> > Data::fill_vector (string filename) {
     vector<vector<int> > datas;
     string delimeter = " ";
 
+    int a = 0;
 
     for(string line; getline(csv, line); ) {
         vector<int> data;
+        a++;
 
         auto start = 0U;
         auto end = line.find(delimeter);
@@ -41,6 +29,9 @@ vector<vector<int> > Data::fill_vector (string filename) {
         }
         data.push_back(stod(line.substr(start, end)));
         datas.push_back(data);
+
+        if (a % 10000 == 0)
+            cout << a << endl;
     }
     return datas;
 }
@@ -60,15 +51,3 @@ void print_vector(vector<int> v) {
     cout << endl;
 }
 
-int main() {
-    string filename = "um/sample.txt";
-    Data d(filename);
-
-    vector<vector<int> >::iterator it_begin = d.get_begin();
-    vector<vector<int> >::iterator it_end = d.get_end();
-
-    for (vector<vector<int> >::iterator it = it_begin ; it != it_end; ++it)
-        print_vector(*it);
-
-    return 0;
-}

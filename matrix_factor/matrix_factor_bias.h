@@ -1,4 +1,4 @@
-#include "netflix_data.h"
+#include "data.h"
 #include <armadillo>
 
 using namespace arma;
@@ -9,7 +9,7 @@ typedef struct {
     int K;
     double eta;
     double reg;
-    NetflixData Y;
+    Data Y;
     double mu;
     double eps;
     double max_epochs;
@@ -19,10 +19,10 @@ class Model {
     ModelParams params;
     Mat<double> U;
     Mat<double> V;
-    Row<double> a;
-    Row<double> b;
+    Col<double> a;
+    Col<double> b;
 
-    double gradU(
+    Col<double> gradU(
             Col<double> Ui, 
             int y, 
             Col<double> Vj, 
@@ -30,7 +30,7 @@ class Model {
             double bj
             );
 
-    double gradV(
+    Col<double> gradV(
             Col<double> Ui, 
             int y, 
             Col<double> Vj, 
@@ -54,8 +54,6 @@ class Model {
             double bj
             );
 
-
-
     public:
     Model(
         int M, 
@@ -63,7 +61,7 @@ class Model {
         int K, 
         double eta, 
         double reg, 
-        NetflixData Y, 
+        Data Y, 
         double mu,
         double eps = 0.01,
         double max_epochs = 200
