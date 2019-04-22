@@ -33,24 +33,28 @@ class Model {
     );
 
     double grad_b_u(
-            double del_common);
+            double del_common,
+            double b_u);
 
     double grad_alpha_u(
             double del_common,
             int user,
-            int time);
+            int time,
+            double alpha_u);
 
     double grad_b_i(
-            double del_common);
+            double del_common,
+            double b_i);
 
     double grad_b_bin(
-            double del_common);
+            double del_common,
+            double b_bin);
 
     public:
     Model(
         int M,
         int N,
-        Data Y,
+        string filename,
         double eps = 0.01,
         double max_epochs = 40
      );
