@@ -22,37 +22,41 @@ class Model {
     Col<double> a;
     Col<double> b;
 
-    Col<double> gradU(
-            Col<double> Ui, 
+    void updateGradU(
+            Col<double> *Ui, 
             int y, 
-            Col<double> Vj, 
+            Col<double> *Vj, 
             double ai, 
             double bj,
-            double s
+            double s,
+            int i,
+            int j
             );
 
-    Col<double> gradV(
-            Col<double> Ui, 
+    void updateGradV(
+            Col<double> *Ui, 
             int y, 
-            Col<double> Vj, 
+            Col<double> *Vj, 
             double ai, 
             double bj,
-            double s
+            double s,
+            int i,
+            int j
             );
 
     double gradA(
-            Col<double> Ui, 
+            Col<double> *Ui, 
             int y, 
-            Col<double> Vj, 
+            Col<double> *Vj, 
             double ai, 
             double bj,
             double s
             );
 
     double gradB(
-            Col<double> Ui, 
+            Col<double> *Ui, 
             int y, 
-            Col<double> Vj, 
+            Col<double> *Vj, 
             double ai, 
             double bj,
             double s

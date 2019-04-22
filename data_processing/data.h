@@ -7,6 +7,7 @@ using namespace std;
 class Data {
     private:
         string filename;
+        char *overhang;
         ifstream* csv;
         vector<vector<int> > vectors;
 

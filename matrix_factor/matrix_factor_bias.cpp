@@ -16,27 +16,29 @@ Model::Model(
      ) : params( { M, N, K, eta, reg, Data(filename), mu, eps, max_epochs } ){
 }
 
-Col<double> Model::gradU(Col<double> Ui, int y, Col<double> Vj, double ai, double bj, double s) {
-    Col<double> res = this->params.eta * ((this->params.reg * Ui) - Vj * s);
-    return res;
+void Model::updateGradU(Col<double> *Ui, int y, Col<double> *Vj, double ai, double bj, double s, 
+        int i, int j) {
+    this->U.col(i - 1) -= this->params.eta * ((this->params.reg * *Ui) - (*Vj) * s);
 }
 
-Col<double> Model::gradV(Col<double> Ui, int y, Col<double> Vj, double ai, double bj, double s) {
-    return this->params.eta * ((this->params.reg * Vj) - Ui * s);
+void Model::updateGradV(Col<double> *Ui, int y, Col<double> *Vj, double ai, double bj, double s,
+        int i, int j) {
+    this->V.col(j - 1) -= this->params.eta * ((this->params.reg * *Vj) - *Ui * s);
 } 
 
-double Model::gradA(Col<double> Ui, int y, Col<double> Vj, double ai, double bj, double s) {
+double Model::gradA(Col<double> *Ui, int y, Col<double> *Vj, double ai, double bj, double s) {
     return as_scalar(this->params.eta * ((this->params.reg * ai) - s));
 }
 
-double Model::gradB(Col<double> Ui, int y, Col<double> Vj, double ai, double bj, double s) {
+double Model::gradB(Col<double> *Ui, int y, Col<double> *Vj, double ai, double bj, double s) {
     return as_scalar(this->params.eta * ((this->params.reg * bj) - s));
 }
 
 double Model::trainErr() {
     vector<vector<int> >::iterator ptr;
-    double loss_err = 0.0;
 
+    int k = 0;
+    double loss_err = 0.0;
 
     while (this->params.Y.hasNext()) {
         vector<int> p = this->params.Y.nextLine();
@@ -46,9 +48,11 @@ double Model::trainErr() {
 
         loss_err += pow((y - this->params.mu - dot(U.col(i - 1), V.col(j - 1))
                 - a[i - 1] - b[j - 1]), 2);
+
+        k++;
     }
 
-    return loss_err;
+    return loss_err / k;
 }
 
 Model::~Model() {}
@@ -66,7 +70,6 @@ void Model::train() {
 
     for (int e = 0; e < this->params.max_epochs; e++) {
         cout << "Running Epoch " << e << endl;
-        int k = 0;
 
         while (this->params.Y.hasNext()) {
             vector<int> p = this->params.Y.nextLine();
@@ -79,28 +82,21 @@ void Model::train() {
 
             double s = as_scalar(y - this->params.mu - dot(u, v) - this->a[i - 1] - this->b[j - 1]);
 
-            Col<double> del_U = this->gradU(u, y, v,  
+            this->updateGradU(&u, y, &v,  
+                    this->a[i - 1], this->b[j - 1], s, i, j);
+            this->updateGradV(&u, y, &v, 
+                    this->a[i - 1], this->b[j - 1], s, i, j);
+            double del_A = this->gradA(&u, y, &v, 
                     this->a[i - 1], this->b[j - 1], s);
-            Col<double> del_V = this->gradV(u, y, v, 
-                    this->a[i - 1], this->b[j - 1], s);
-            double del_A = this->gradA(u, y, v, 
-                    this->a[i - 1], this->b[j - 1], s);
-            double del_B = this->gradB(u, y, v, 
+            double del_B = this->gradB(&u, y, &v, 
                     this->a[i - 1], this->b[j - 1], s);
 
-            this->U.col(i - 1) -= del_U;
-            this->V.col(j - 1) -= del_V;
             this->a[i - 1] -= del_A;
             this->b[j - 1] -= del_B;
-
-            k++;
-            
-            if (k % 10000 == 0) {
-                cout << k << endl;
-            }
         }
 
         this->params.Y.reset();
         cout << "Error " << trainErr() << endl;
+        this->params.Y.reset();
     }
 }
