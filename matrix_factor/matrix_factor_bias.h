@@ -21,12 +21,14 @@ class Model {
     Mat<double> V;
     Col<double> a;
     Col<double> b;
+    Col<double> del_U;
+    Col<double> del_V;
 
     void updateGradU(
-            Col<double> *Ui, 
-            int y, 
-            Col<double> *Vj, 
-            double ai, 
+            Col<double> *Ui,
+            int y,
+            Col<double> *Vj,
+            double ai,
             double bj,
             double s,
             int i,
@@ -34,10 +36,10 @@ class Model {
             );
 
     void updateGradV(
-            Col<double> *Ui, 
-            int y, 
-            Col<double> *Vj, 
-            double ai, 
+            Col<double> *Ui,
+            int y,
+            Col<double> *Vj,
+            double ai,
             double bj,
             double s,
             int i,
@@ -45,31 +47,31 @@ class Model {
             );
 
     double gradA(
-            Col<double> *Ui, 
-            int y, 
-            Col<double> *Vj, 
-            double ai, 
+            Col<double> *Ui,
+            int y,
+            Col<double> *Vj,
+            double ai,
             double bj,
             double s
             );
 
     double gradB(
-            Col<double> *Ui, 
-            int y, 
-            Col<double> *Vj, 
-            double ai, 
+            Col<double> *Ui,
+            int y,
+            Col<double> *Vj,
+            double ai,
             double bj,
             double s
             );
 
     public:
     Model(
-        int M, 
-        int N, 
-        int K, 
-        double eta, 
-        double reg, 
-        string filename, 
+        int M,
+        int N,
+        int K,
+        double eta,
+        double reg,
+        string filename,
         double mu,
         double eps = 0.01,
         double max_epochs = 200
@@ -79,4 +81,4 @@ class Model {
     void train();
     void save(char *file);
     ~Model();
-}; 
+};
