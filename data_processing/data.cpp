@@ -5,62 +5,89 @@
 
 #include "data.h"
 
-#define CHUNK 50
+#define CHUNK 120000000
+#define STREAM 0
 
 Data::Data (string f) : csv(new ifstream(f))  {
     vec_inx = 0;
     filename = f;
+    this->cache.arr = new NetflixData[CHUNK];
+    this->cache.size = 0;
 }
 
 void Data::reset() {
     vec_inx = 0;
-    csv = new ifstream(filename);
+    if (STREAM) {
+        csv = new ifstream(filename);
+        this->cache.size = 0;
+    }
 }
 
 void Data::fill_vector () {
-    assert(vec_inx >= this->vectors.size());
+    assert(vec_inx >= this->cache.size);
 
-    this->vectors.clear();
+    this->cache.size = 0;
 
     string delimeter = " ";
 
     int lines_read = 0;
     for(string line; getline(*this->csv, line); lines_read++) {
-        vector<int> data;
         auto start = 0U;
         auto end = line.find(delimeter);
 
+        int elem = 0;
+
         while (end != string::npos) {
-            data.push_back(stod(line.substr(start, end - start)));
+            int data = stod(line.substr(start, end - start));
+
+            switch (elem) {
+                case 0:
+                    this->cache.arr[lines_read].user = data;
+                    break;
+                case 1:
+                    this->cache.arr[lines_read].movie = data;
+                    break;
+                case 2:
+                    this->cache.arr[lines_read].date = data;
+                    break;
+                default:
+                    assert(false);
+            }
+            
             start = end + delimeter.length();
             end = line.find(delimeter, start);
+            elem++;
         }
-        data.push_back(stod(line.substr(start, end)));
-        this->vectors.push_back(data);
 
-        /*if (lines_read > CHUNK) {
+        assert(elem == 3);
+
+        this->cache.arr[lines_read].rating = stod(line.substr(start, end));
+        this->cache.size++;
+
+        if (STREAM && lines_read > CHUNK) {
             break;
-        }*/
+        }
     }
-
-
-
 
     vec_inx = 0;
 }
 
-vector<int> Data::nextLine() {
-    if (vec_inx >= this->vectors.size()) {
+Data::~Data() {
+    free(this->cache.arr);
+}
+
+NetflixData Data::nextLine() {
+    if (vec_inx >= cache.size) {
         fill_vector();
     }
 
-    assert(this->vectors.size() > 0);
+    assert(cache.size > 0);
 
-    return this->vectors[vec_inx++];
+    return this->cache.arr[vec_inx++];
 }
 
 bool Data::hasNext() {
-    return vec_inx < this->vectors.size() || !csv->eof();
+    return vec_inx < this->cache.size || !csv->eof();
 }
 
 void print_vector(vector<int> v) {

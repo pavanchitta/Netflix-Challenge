@@ -43,9 +43,9 @@ double Model::gradB(Col<double> *Ui, int y, Col<double> *Vj, double ai, double b
 vector<double> Model::predict() {
     vector<double> preds;
     while (this->params.Y_test.hasNext()) {
-        vector<int> p = this->params.Y_test.nextLine();
-        int user = p[0];
-        int movie = p[1];
+        NetflixData p = this->params.Y_test.nextLine();
+        int user = p.user;
+        int movie = p.movie;
         Col<double> u = this->U.col(user - 1);
         Col<double> v = this->V.col(movie - 1);
         double pred = this->params.mu + dot(u, v) + this->a[user - 1] + this->b[movie - 1];
@@ -53,16 +53,17 @@ vector<double> Model::predict() {
     }
     return preds;
 }
+
 double Model::trainErr() {
     vector<vector<int> >::iterator ptr;
 
     int k = 0;
     double loss_err = 0.0;
     while (this->params.Y.hasNext()) {
-        vector<int> p = this->params.Y.nextLine();
-        int i = p[0];
-        int j = p[1];
-        int y = p[3];
+        NetflixData p = this->params.Y.nextLine();
+        int i = p.user;
+        int j = p.movie;
+        int y = p.rating;
         //cout << "Point " << a << endl;
         loss_err += pow((y - this->params.mu - dot(U.col(i - 1), V.col(j - 1))
                 - a[i - 1] - b[j - 1]), 2);
@@ -92,11 +93,11 @@ void Model::train() {
         cout << "Running Epoch " << e << endl;
         int count = 0;
         while (this->params.Y.hasNext()) {
-            vector<int> p = this->params.Y.nextLine();
-            int i = p[0];
-            int j = p[1];
-            int y = p[3];
-            //cout << "Point " << a << endl;
+            NetflixData p = this->params.Y.nextLine();
+            int i = p.user;
+            int j = p.movie;
+            int y = p.rating;
+
             count++;
 
             Col<double> u = this->U.col(i - 1);
@@ -119,6 +120,8 @@ void Model::train() {
             this->a[i - 1] -= del_A;
             this->b[j - 1] -= del_B;
         }
+
+        cout << "Ran through points" << endl;
         
         this->params.Y.reset();
         cout << "Error " << trainErr() << endl;

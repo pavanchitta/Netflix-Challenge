@@ -16,11 +16,11 @@ void writeToFile(string filename, vector<double> preds) {
 }
 
 int main() {
-    //string filename = "/Users/vigneshv/code/CS156b-Netflix/matrix_factor/mu/all.dta";
-    string train_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/all.dta";
-    string test_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/qual.dta";
+    string filename = "/Users/vigneshv/code/CS156b-Netflix/matrix_factor/mu/all.dta";
+    // string train_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/all.dta";
+    // string test_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/qual.dta";
 
-    Model m(458293, 17770, 20, 0.01, 0.1, train_filename, test_filename, 3.512599);
+    Model m(458293, 17770, 20, 0.01, 0.1, filename, filename, 3.512599);
     m.train();
     vector<double> preds = m.predict();
     writeToFile("/Users/pavanchitta/CS156b-Netflix/svd_test_preds.txt", preds);
