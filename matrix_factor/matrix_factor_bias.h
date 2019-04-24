@@ -1,4 +1,4 @@
-#include "netflix_data.h"
+#include "../data_processing/data.h"
 #include <armadillo>
 
 using namespace arma;
@@ -9,7 +9,7 @@ typedef struct {
     int K;
     double eta;
     double reg;
-    NetflixData Y;
+    Data Y;
     double mu;
     double eps;
     double max_epochs;
@@ -19,51 +19,59 @@ class Model {
     ModelParams params;
     Mat<double> U;
     Mat<double> V;
-    Row<double> a;
-    Row<double> b;
+    Col<double> a;
+    Col<double> b;
+    Col<double> del_U;
+    Col<double> del_V;
 
-    double gradU(
-            Col<double> Ui, 
-            int y, 
-            Col<double> Vj, 
-            double ai, 
-            double bj
+    void updateGradU(
+            Col<double> *Ui,
+            int y,
+            Col<double> *Vj,
+            double ai,
+            double bj,
+            double s,
+            int i,
+            int j
             );
 
-    double gradV(
-            Col<double> Ui, 
-            int y, 
-            Col<double> Vj, 
-            double ai, 
-            double bj
+    void updateGradV(
+            Col<double> *Ui,
+            int y,
+            Col<double> *Vj,
+            double ai,
+            double bj,
+            double s,
+            int i,
+            int j
             );
 
     double gradA(
-            Col<double> Ui, 
-            int y, 
-            Col<double> Vj, 
-            double ai, 
-            double bj
+            Col<double> *Ui,
+            int y,
+            Col<double> *Vj,
+            double ai,
+            double bj,
+            double s
             );
 
     double gradB(
-            Col<double> Ui, 
-            int y, 
-            Col<double> Vj, 
-            double ai, 
-            double bj
+            Col<double> *Ui,
+            int y,
+            Col<double> *Vj,
+            double ai,
+            double bj,
+            double s
             );
-
-
 
     public:
     Model(
-        int M, 
-        int N, 
-        int K, 
-        double eta, 
-        double reg, 
-        NetflixData Y, 
+        int M,
+        int N,
+        int K,
+        double eta,
+        double reg,
+        string filename,
         double mu,
         double eps = 0.01,
         double max_epochs = 200
@@ -73,4 +81,4 @@ class Model {
     void train();
     void save(char *file);
     ~Model();
-}; 
+};
