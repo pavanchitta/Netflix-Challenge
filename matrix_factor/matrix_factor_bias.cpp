@@ -11,12 +11,13 @@ Model::Model(
         double reg,
         string train_filename,
         string test_filename,
+        string valid_filename,
         double mu,
         double eps,
         double max_epochs
 
 
-    ) : params( { M, N, K, eta, reg, Data(train_filename), Data(test_filename), mu, eps, max_epochs}){
+    ) : params( { M, N, K, eta, reg, Data(train_filename), Data(test_filename), Data(valid_filename), mu, eps, max_epochs}){
 
 }
 
@@ -61,6 +62,24 @@ double Model::trainErr() {
     double loss_err = 0.0;
     while (this->params.Y.hasNext()) {
         NetflixData p = this->params.Y.nextLine();
+        int i = p.user;
+        int j = p.movie;
+        int y = p.rating;
+        //cout << "Point " << a << endl;
+        loss_err += pow((y - this->params.mu - dot(U.col(i - 1), V.col(j - 1))
+                - a[i - 1] - b[j - 1]), 2);
+
+        k++;
+    }
+
+    return loss_err / k;
+}
+
+double Model::validErr() {
+    int k = 0;
+    double loss_err = 0.0;
+    while (this->params.Y_valid.hasNext()) {
+        NetflixData p = this->params.Y_valid.nextLine();
         int i = p.user;
         int j = p.movie;
         int y = p.rating;
@@ -122,9 +141,12 @@ void Model::train() {
         }
 
         cout << "Ran through points" << endl;
-        
+        this->params.Y_valid.reset();
+        cout << "Probe Error " << validErr() << endl;
+        this->params.Y_valid.reset();
+
         this->params.Y.reset();
-        cout << "Error " << trainErr() << endl;
-        this->params.Y.reset();
+        // cout << "Error " << trainErr() << endl;
+        // this->params.Y.reset();
     }
 }

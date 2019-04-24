@@ -11,6 +11,7 @@ typedef struct {
     double reg;
     Data Y;
     Data Y_test;
+    Data Y_valid;
     double mu;
     double eps;
     double max_epochs;
@@ -74,12 +75,14 @@ class Model {
         double reg,
         string train_filename,
         string test_filename,
+        string valid_filename,
         double mu,
         double eps = 0.01,
-        double max_epochs = 20
+        double max_epochs = 40
      );
     vector<double> predict();
     double trainErr();
+    double validErr();
     void train();
     void save(char *file);
     ~Model();

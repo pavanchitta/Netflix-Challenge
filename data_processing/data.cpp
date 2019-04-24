@@ -53,17 +53,17 @@ void Data::fill_vector () {
                 default:
                     assert(false);
             }
-            
+
             start = end + delimeter.length();
             end = line.find(delimeter, start);
             elem++;
         }
 
-        assert(elem == 3);
+        if (elem == 3) {
+            this->cache.arr[lines_read].rating = stod(line.substr(start, end));
 
-        this->cache.arr[lines_read].rating = stod(line.substr(start, end));
+        }
         this->cache.size++;
-
         if (STREAM && lines_read > CHUNK) {
             break;
         }
