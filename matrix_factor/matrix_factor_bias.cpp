@@ -119,7 +119,7 @@ void Model::train() {
             this->a[i - 1] -= del_A;
             this->b[j - 1] -= del_B;
         }
-        
+
         this->params.Y.reset();
         cout << "Error " << trainErr() << endl;
         this->params.Y.reset();

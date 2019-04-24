@@ -89,6 +89,7 @@ double Model::trainErr() {
                         alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1]) -
                         this->b_i[movie - 1] - this->b_bin(movie - 1, bin), 2);
     }
+    cout << "Number of points" << num_points << endl;
     return loss_err/num_points;
 }
 

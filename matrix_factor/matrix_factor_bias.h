@@ -76,7 +76,7 @@ class Model {
         string test_filename,
         double mu,
         double eps = 0.01,
-        double max_epochs = 20
+        double max_epochs = 40
      );
     vector<double> predict();
     double trainErr();

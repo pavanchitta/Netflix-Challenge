@@ -17,7 +17,7 @@ void writeToFile(string filename, vector<double> preds) {
 
 int main() {
     //string filename = "/Users/vigneshv/code/CS156b-Netflix/matrix_factor/mu/all.dta";
-    string train_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/all.dta";
+    string train_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/train.dta";
     string test_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/qual.dta";
 
     Model m(458293, 17770, 20, 0.01, 0.1, train_filename, test_filename, 3.512599);
