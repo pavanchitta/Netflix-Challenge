@@ -10,6 +10,7 @@ typedef struct {
     double eta;
     double reg;
     Data Y;
+    Data Y_test;
     double mu;
     double eps;
     double max_epochs;
@@ -71,12 +72,13 @@ class Model {
         int K,
         double eta,
         double reg,
-        string filename,
+        string train_filename,
+        string test_filename,
         double mu,
         double eps = 0.01,
-        double max_epochs = 200
+        double max_epochs = 20
      );
-
+    vector<double> predict();
     double trainErr();
     void train();
     void save(char *file);

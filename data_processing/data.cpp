@@ -5,7 +5,7 @@
 
 #include "data.h"
 
-#define CHUNK 10000
+#define CHUNK 50
 
 Data::Data (string f) : csv(new ifstream(f))  {
     vec_inx = 0;
@@ -25,16 +25,8 @@ void Data::fill_vector () {
     string delimeter = " ";
 
     int lines_read = 0;
-
     for(string line; getline(*this->csv, line); lines_read++) {
-        if (lines_read > CHUNK) {
-            break;
-        }
-
-        lines_read++;
-
         vector<int> data;
-
         auto start = 0U;
         auto end = line.find(delimeter);
 
@@ -45,7 +37,14 @@ void Data::fill_vector () {
         }
         data.push_back(stod(line.substr(start, end)));
         this->vectors.push_back(data);
+
+        /*if (lines_read > CHUNK) {
+            break;
+        }*/
     }
+
+
+
 
     vec_inx = 0;
 }
@@ -56,12 +55,12 @@ vector<int> Data::nextLine() {
     }
 
     assert(this->vectors.size() > 0);
-    
+
     return this->vectors[vec_inx++];
 }
 
 bool Data::hasNext() {
-    return vec_inx < this->vectors.size() || !csv->eof(); 
+    return vec_inx < this->vectors.size() || !csv->eof();
 }
 
 void print_vector(vector<int> v) {
@@ -70,4 +69,3 @@ void print_vector(vector<int> v) {
     }
     cout << endl;
 }
-

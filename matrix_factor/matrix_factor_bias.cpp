@@ -9,13 +9,14 @@ Model::Model(
         int K,
         double eta,
         double reg,
-        string filename,
+        string train_filename,
+        string test_filename,
         double mu,
         double eps,
         double max_epochs
 
 
-    ) : params( { M, N, K, eta, reg, Data(filename), mu, eps, max_epochs}){
+    ) : params( { M, N, K, eta, reg, Data(train_filename), Data(test_filename), mu, eps, max_epochs}){
 
 }
 
@@ -39,18 +40,30 @@ double Model::gradB(Col<double> *Ui, int y, Col<double> *Vj, double ai, double b
     return as_scalar(this->params.eta * ((this->params.reg * bj) - s));
 }
 
+vector<double> Model::predict() {
+    vector<double> preds;
+    while (this->params.Y_test.hasNext()) {
+        vector<int> p = this->params.Y_test.nextLine();
+        int user = p[0];
+        int movie = p[1];
+        Col<double> u = this->U.col(user - 1);
+        Col<double> v = this->V.col(movie - 1);
+        double pred = this->params.mu + dot(u, v) + this->a[user - 1] + this->b[movie - 1];
+        preds.push_back(pred);
+    }
+    return preds;
+}
 double Model::trainErr() {
     vector<vector<int> >::iterator ptr;
 
     int k = 0;
     double loss_err = 0.0;
-
     while (this->params.Y.hasNext()) {
         vector<int> p = this->params.Y.nextLine();
         int i = p[0];
         int j = p[1];
         int y = p[3];
-
+        //cout << "Point " << a << endl;
         loss_err += pow((y - this->params.mu - dot(U.col(i - 1), V.col(j - 1))
                 - a[i - 1] - b[j - 1]), 2);
 
@@ -77,14 +90,15 @@ void Model::train() {
 
     for (int e = 0; e < this->params.max_epochs; e++) {
         cout << "Running Epoch " << e << endl;
-        int i = 0;
+        int count = 0;
         while (this->params.Y.hasNext()) {
             vector<int> p = this->params.Y.nextLine();
             int i = p[0];
             int j = p[1];
             int y = p[3];
-            cout << "Point " << i << endl;
-            i++;
+            //cout << "Point " << a << endl;
+            count++;
+
             Col<double> u = this->U.col(i - 1);
             Col<double> v = this->V.col(j - 1);
 
@@ -105,7 +119,7 @@ void Model::train() {
             this->a[i - 1] -= del_A;
             this->b[j - 1] -= del_B;
         }
-
+        
         this->params.Y.reset();
         cout << "Error " << trainErr() << endl;
         this->params.Y.reset();
