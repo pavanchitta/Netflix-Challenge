@@ -20,10 +20,10 @@ int main() {
     string train_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/train.dta";
     string test_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/qual.dta";
     string valid_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/probe.dta";
-    int K = 60;
+    int K = 40;
     double eta = 0.01;
-    double reg = 0.01;
-    Model m(458293, 17770, K, eta, reg, train_filename, test_filename, valid_filename, 3.512599);
+    double reg = 0.00;
+    Model m(458293, 17770, K, eta, reg, train_filename, test_filename, valid_filename, 3.608612994454291);
     m.train();
     vector<double> preds = m.predict();
     writeToFile("/Users/pavanchitta/CS156b-Netflix/svd_test_preds_3.txt", preds);

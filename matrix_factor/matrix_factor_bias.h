@@ -18,7 +18,7 @@ typedef struct {
 } ModelParams;
 
 class Model {
-    ModelParams params;
+
     Mat<double> U;
     Mat<double> V;
     Col<double> a;
@@ -67,6 +67,7 @@ class Model {
             );
 
     public:
+    ModelParams params;
     Model(
         int M,
         int N,
@@ -78,7 +79,7 @@ class Model {
         string valid_filename,
         double mu,
         double eps = 0.01,
-        double max_epochs = 40
+        double max_epochs = 200
      );
     vector<double> predict();
     double trainErr();

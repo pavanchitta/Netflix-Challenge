@@ -82,7 +82,6 @@ NetflixData Data::nextLine() {
     }
 
     assert(cache.size > 0);
-
     return this->cache.arr[vec_inx++];
 }
 

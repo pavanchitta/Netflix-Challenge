@@ -13,7 +13,6 @@ Model::~Model() {}
 
 double Model::grad_common(int user, int rating, double b_u, double alpha_u,
                           int time, double b_i, double b_bin) {
-    //cout << "reached" << endl;
     return (rating - GLOBAL_BIAS - b_u
             - alpha_u * this->devUser(time, this->t_u[user - 1])
             - b_i - b_bin);
@@ -44,17 +43,14 @@ double Model::grad_b_bin(double del_common, double b_bin) {
     return -2 * eta * del_common + eta * reg * 2 * b_bin;
 }
 
-void Model::user_date_avg(Data Y) {
+void Model::user_date_avg() {
     this->t_u = Col<double>(this->params.M, fill::zeros);
     Col<double> num_ratings = Col<double>(this->params.M, fill::zeros);
     this->params.Y.reset();
-    int i = 0;
     while (this->params.Y.hasNext()) {
-        //cout <<  i << endl;
-        i++;
-        vector<int> p = this->params.Y.nextLine();
-        int user = p[0];
-        int time = p[2];
+        NetflixData p = this->params.Y.nextLine();
+        int user = p.user;
+        int time = p.date;
         this->t_u[user - 1] += time;
         num_ratings[user - 1] += 1;
     }
@@ -79,11 +75,11 @@ double Model::trainErr() {
     int num_points = 0;
     while (this->params.Y.hasNext()) {
         num_points ++;
-        vector<int> p = this->params.Y.nextLine();
-        int user = p[0];
-        int movie = p[1];
-        int rating = p[3];
-        int time = p[2];
+        NetflixData p = this->params.Y.nextLine();
+        int user = p.user;
+        int movie = p.movie;
+        int rating = p.rating;
+        int time = p.date;
         int bin = time / DAYS_PER_BIN;
         loss_err += pow(rating - GLOBAL_BIAS - this->b_u[user - 1] -
                         alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1]) -
@@ -106,27 +102,27 @@ void Model::train() {
     this->b_bin -= 0.5;
     // Initialize the mean date of user ratings
     //cout << "Calculating user date avgs" << endl;
-
-    //this->t_u = Col<double>(this->params.M, fill::randu);
-    this->user_date_avg(this->params.Y);
-
+    //this->user_date_avg();
+    this->t_u = Col<double>(this->params.M, fill::zeros);
+    cout << "finished getting user_avg" << endl;
     for (int e = 0; e < this->params.max_epochs; e++) {
         cout << "Running Epoch " << e << endl;
         this->params.Y.reset();
+        cout << "reached1" << endl;
         while (this->params.Y.hasNext()) {
-
-            vector<int> p = this->params.Y.nextLine();
-            int user = p[0];
-            int movie = p[1];
-            int rating = p[3];
-            int time = p[2];
+            NetflixData p = this->params.Y.nextLine();
+            int user = p.user;
+            int movie = p.movie;
+            int rating = p.rating;
+            int time = p.date;
             int bin = time / DAYS_PER_BIN;
             //cout << time << endl;
+
             //cout << "reached" << endl;
             double del_common = this->grad_common(user, rating, this->b_u[user - 1],
                     this->alpha_u[user - 1], time, this->b_i[movie - 1],
                     this->b_bin(movie - 1, bin));
-            //cout << "reached" << endl;
+            //cout << "reached2" << endl;
             double del_b_u = this->grad_b_u(del_common, this->b_u[user - 1]);
             double del_alpha_u = this->grad_alpha_u(del_common, user, time, this->alpha_u[user - 1]);
             double del_b_bin = this->grad_b_bin(del_common, this->b_i[movie - 1]);
@@ -140,5 +136,6 @@ void Model::train() {
         }
 
         cout << "Error " << trainErr() << endl;
+        this->params.Y.reset();
     }
 }

@@ -19,8 +19,7 @@ class Model {
     Col<double> alpha_u;
     Col<double> t_u;
 
-    void user_date_avg(
-            Data Y);
+    void user_date_avg();
 
     double grad_common(
             int user,

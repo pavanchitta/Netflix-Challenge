@@ -21,6 +21,7 @@ Model::Model(
 
 }
 
+
 void Model::updateGradU(Col<double> *Ui, int y, Col<double> *Vj, double ai, double bj, double s,
         int i, int j) {
     //this->U.col(i - 1) -= this->params.eta * ((this->params.reg * *Ui) - (*Vj) * s);
@@ -108,6 +109,8 @@ void Model::train() {
     this->a -= 0.5;
     this->b -= 0.5;
 
+    double prev_err = validErr();
+    double curr_err = 0.0;
     for (int e = 0; e < this->params.max_epochs; e++) {
         cout << "Running Epoch " << e << endl;
         int count = 0;
@@ -142,10 +145,17 @@ void Model::train() {
 
         cout << "Ran through points" << endl;
         this->params.Y_valid.reset();
-        cout << "Probe Error " << validErr() << endl;
+        curr_err = validErr();
+        cout << "Probe Error " << curr_err << endl;
         this->params.Y_valid.reset();
-
         this->params.Y.reset();
+
+        // Early stopping
+        if (prev_err < curr_err) {
+            break;
+        }
+
+        prev_err = curr_err;
         // cout << "Error " << trainErr() << endl;
         // this->params.Y.reset();
     }
