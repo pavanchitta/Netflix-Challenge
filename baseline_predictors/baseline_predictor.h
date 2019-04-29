@@ -14,12 +14,17 @@ typedef struct {
 class Model {
     ModelParams params;
     Mat<double> b_bin;
+    Mat<double> b_u_tui;
     Col<double> b_i;
     Col<double> b_u;
     Col<double> alpha_u;
     Col<double> t_u;
+    Col<double> c_u;
+    Mat<double> f_ui;
+    Mat<double> b_f_ui;
 
     void user_date_avg();
+    void user_frequency();
 
     double grad_common(
             int user,
@@ -28,7 +33,10 @@ class Model {
             double alpha_u,
             int time,
             double b_i,
-            double b_bin
+            double b_bin,
+            double b_u_tui,
+            double c_u,
+            double b_f_ui
     );
 
     double grad_b_u(
@@ -48,6 +56,23 @@ class Model {
     double grad_b_bin(
             double del_common,
             double b_bin);
+
+    double grad_b_u_tui(
+        double del_common,
+        double b_u_tui
+    );
+
+    double grad_c_u(
+        double del_common,
+        double c_u,
+        double b_i,
+        double b_bin
+    );
+
+    double grad_b_f_ui(
+        double del_common,
+        double b_f_ui
+    );
 
     public:
     Model(
