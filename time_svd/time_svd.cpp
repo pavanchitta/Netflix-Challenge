@@ -96,7 +96,14 @@ void Model::user_frequency() {
         int time = p.date;
         this->f_ui(user - 1, time) += 1;
     }
-    this->f_ui = floor(log(this->f_ui)/log(6.76));
+    for (int user = 0; user < this->params.M; user ++) {
+        for (int time = 0; time < MAX_DATE; time ++) {
+            int freq = this->f_ui(user, time);
+            if (freq != 0) {
+                this->f_ui(user, time) = floor(log(freq)/log(6.76));
+            }
+        }
+    }
     cout << "Finished calculating user_frequency" << endl;
 }
 
@@ -225,9 +232,9 @@ void Model::train() {
     this->del_U = Col<double>(this->params.K, fill::zeros);
     this->del_V = Col<double>(this->params.K, fill::zeros);
 
-    //this->user_date_avg();
+    this->user_date_avg();
     this->user_frequency();
-    this->t_u = Col<double>(this->params.M, fill::zeros);
+    //this->t_u = Col<double>(this->params.M, fill::zeros);
     //this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
 
     double prev_err = validErr();
@@ -292,6 +299,7 @@ void Model::train() {
 
         // Early stopping
         if (prev_err < curr_err) {
+            cout << "Early stopping" << endl;
             break;
         }
 
