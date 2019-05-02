@@ -17,14 +17,14 @@ double Model::grad_common(int user, int rating, double b_u, double alpha_u,
                           int time, double b_i, double b_bin, double b_u_tui, double c_u, double b_f_ui) {
     return (rating - GLOBAL_BIAS - b_u
             - alpha_u * this->devUser(time, this->t_u[user - 1])
-            - (b_i + b_bin)*c_u - b_u_tui - b_f_ui);
+            - (b_i + b_bin) * c_u - b_u_tui - b_f_ui);
 }
 
 double Model::grad_b_u(double del_common, double b_u) {
     double eta = 2.67 * pow(10, -3);
     double reg = 2.55 * pow(10, -2);
     //return -2 * eta * del_common + eta * reg * 2 * b_u;
-    return -1 * eta * del_common + eta * reg * 1 * b_u;
+    return -eta * del_common + eta * reg * b_u;
 }
 
 double Model::grad_alpha_u(double del_common, int user, int time, double alpha_u) {
@@ -34,40 +34,40 @@ double Model::grad_alpha_u(double del_common, int user, int time, double alpha_u
     double reg = 5000 * pow(10, -2);
     // return -2 * eta * devUser(time, this->t_u[user - 1]) * del_common
     //        + eta * reg * 2 * alpha_u;
-    return -1 * eta * devUser(time, this->t_u[user - 1]) * del_common
-           + eta * reg * 1 * alpha_u;
+    return -eta * devUser(time, this->t_u[user - 1]) * del_common
+           + eta * reg * alpha_u;
 }
 
-double Model::grad_b_i(double del_common, double b_i) {
+double Model::grad_b_i(double del_common, double b_i, double c_u) {
     // double eta = 0.488 * pow(10, -3);
     // double reg = 2.55 * pow(10, -2);
     double eta = 0.488 * pow(10, -3);
     double reg = 2.55 * pow(10, -2);
     //return -2 * eta * del_common + eta * reg * 2 * b_i;
-    return -1 * eta * del_common + eta * reg * 1 * b_i;
+    return -eta * del_common * c_u + eta * reg * b_i;
 
 }
 
-double Model::grad_b_bin(double del_common, double b_bin) {
+double Model::grad_b_bin(double del_common, double b_bin, double c_u) {
     // double eta = 0.115 * pow(10, -6);
     // double reg = 9.29 * pow(10, -6);
     double eta = 0.05 * pow(10, -3);
     double reg = 10 * pow(10, -2);
     //return -2 * eta * del_common + eta * reg * 2 * b_bin;
-    return -eta * del_common + eta * reg * b_bin;
+    return -eta * del_common * c_u + eta * reg * b_bin;
 }
 
 double Model::grad_b_u_tui(double del_common, double b_u_tui) {
     double eta = 2.57 * pow(10, -3);
     double reg = 0.5 * pow(10, -2);
     //return -2 * eta * del_common + eta * reg * 2 * b_u_tui;
-    return -1 * eta * del_common + eta * reg * 1 * b_u_tui;
+    return -eta * del_common + eta * reg * b_u_tui;
 }
 
 double Model::grad_c_u(double del_common, double c_u, double b_i, double b_bin) {
     double eta = 8 * pow(10, -3);
     double reg = 1 * pow(10, -2);
-    return -eta * del_common * (b_i + b_bin) + eta * reg * c_u;
+    return -eta * del_common * (b_i + b_bin) + eta * reg * (c_u - 1);
 }
 
 double Model::grad_b_f_ui(double del_common, double b_f_ui) {
@@ -75,7 +75,6 @@ double Model::grad_b_f_ui(double del_common, double b_f_ui) {
     double reg = 1.1 * pow(10, -8);
     return -eta * del_common + eta * reg * b_f_ui;
 }
-
 
 void Model::user_frequency() {
     this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
@@ -131,9 +130,9 @@ double Model::trainErr() {
 
         int freq = this->f_ui(user - 1, time);
         loss_err += pow(rating - GLOBAL_BIAS - this->b_u[user - 1]
-                        - (this->b_i[movie - 1] + this->b_bin(movie - 1, bin))* this->c_u[user - 1] -
-                        alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
-                        - this->b_u_tui(user - 1, time) - this->b_f_ui(user - 1, freq), 2);
+                        - (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1] -
+                        this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
+                        - this->b_u_tui(user - 1, time) - this->b_f_ui(movie - 1, freq), 2);
     }
     return loss_err/num_points;
 }
@@ -141,22 +140,21 @@ double Model::trainErr() {
 void Model::train() {
 
     // Intialize matrices for user and movie biases.
-    this->b_u = Col<double>(this->params.M, fill::randu);
-    this->alpha_u = Col<double>(this->params.M, fill::randu);
-    this->b_i = Col<double>(this->params.N, fill::randu);
-    this->b_bin = Mat<double>(this->params.N, NUM_BINS, fill::randu);
+    this->b_u = Col<double>(this->params.M, fill::zeros);
+    this->alpha_u = Col<double>(this->params.M, fill::zeros);
+    this->b_i = Col<double>(this->params.N, fill::zeros);
+    this->b_bin = Mat<double>(this->params.N, NUM_BINS, fill::zeros);
 
-    this->b_u_tui = Mat<double>(this->params.M,MAX_DATE, fill::zeros);
-    this->c_u = Col<double>(this->params.M, fill::zeros);
-    this->b_f_ui = Mat<double>(this->params.M, MAX_FREQ, fill::randu);
-
+    this->b_u_tui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
+    this->c_u = Col<double>(this->params.M, fill::ones);
+    this->b_f_ui = Mat<double>(this->params.N, MAX_FREQ, fill::zeros);
 
     // Normalize random entries to be between -0.5 and 0.5.
-    this->b_u -= 0.5;
-    this->alpha_u -= 0.5;
-    this->b_i -= 0.5;
-    this->b_bin -= 0.5;
-    this->b_f_ui -= 0.5;
+    // this->b_u -= 0.5;
+    // this->alpha_u -= 0.5;
+    // this->b_i -= 0.5;
+    // this->b_bin -= 0.5;
+    // this->b_f_ui -= 0.5;
     //this->c_u -= 0.5;
 
     this->user_date_avg();
@@ -180,16 +178,16 @@ void Model::train() {
 
             double del_common = this->grad_common(user, rating, this->b_u[user - 1],
                     this->alpha_u[user - 1], time, this->b_i[movie - 1],
-                    this->b_bin(movie - 1, bin), this->b_u_tui(user -1, time), this->c_u[user - 1], this->b_f_ui(user - 1, freq));
+                    this->b_bin(movie - 1, bin), this->b_u_tui(user -1, time), this->c_u[user - 1], this->b_f_ui(movie - 1, freq));
 
             double del_b_u = this->grad_b_u(del_common, this->b_u[user - 1]);
             double del_alpha_u = this->grad_alpha_u(del_common, user, time, this->alpha_u[user - 1]);
-            double del_b_bin = this->grad_b_bin(del_common, this->b_bin(movie - 1, bin));
-            double del_b_i = this->grad_b_i(del_common, this->b_i[movie - 1]);
+            double del_b_bin = this->grad_b_bin(del_common, this->b_bin(movie - 1, bin), this->c_u[user - 1]);
+            double del_b_i = this->grad_b_i(del_common, this->b_i[movie - 1], this->c_u[user - 1]);
 
             double del_b_u_tui = this->grad_b_u_tui(del_common, this->b_u_tui(user - 1, time));
             double del_c_u = this->grad_c_u(del_common, this->c_u[user - 1], this->b_i[movie - 1], this->b_bin(movie - 1, bin));
-            double del_b_f_ui = this->grad_b_f_ui(del_common, this->b_f_ui(user - 1, freq));
+            double del_b_f_ui = this->grad_b_f_ui(del_common, this->b_f_ui(movie - 1, freq));
 
             this->b_u[user - 1] -= del_b_u;
             this->alpha_u[user - 1] -= del_alpha_u;
@@ -197,10 +195,10 @@ void Model::train() {
             this->b_bin(movie - 1, bin) -= del_b_bin;
             this->b_u_tui(user - 1, time) -= del_b_u_tui;
             this->c_u[user - 1] -= del_c_u;
-            this->b_f_ui(user - 1, freq) -= del_b_f_ui;
+            this->b_f_ui(movie - 1, freq) -= del_b_f_ui;
 
         }
-        //cout << "Error " << trainErr() << endl;
+        cout << "Error " << trainErr() << endl;
         this->params.Y.reset();
     }
 }

@@ -51,11 +51,15 @@ class Model {
 
     double grad_b_i(
             double del_common,
-            double b_i);
+            double b_i,
+            double c_u
+    );
 
     double grad_b_bin(
             double del_common,
-            double b_bin);
+            double b_bin,
+            double c_u
+    );
 
     double grad_b_u_tui(
         double del_common,
