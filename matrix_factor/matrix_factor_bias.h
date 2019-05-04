@@ -11,13 +11,14 @@ typedef struct {
     double reg;
     Data Y;
     Data Y_test;
+    Data Y_valid;
     double mu;
     double eps;
     double max_epochs;
 } ModelParams;
 
 class Model {
-    ModelParams params;
+
     Mat<double> U;
     Mat<double> V;
     Col<double> a;
@@ -66,6 +67,7 @@ class Model {
             );
 
     public:
+    ModelParams params;
     Model(
         int M,
         int N,
@@ -74,12 +76,14 @@ class Model {
         double reg,
         string train_filename,
         string test_filename,
+        string valid_filename,
         double mu,
         double eps = 0.01,
-        double max_epochs = 20
+        double max_epochs = 200
      );
     vector<double> predict();
     double trainErr();
+    double validErr();
     void train();
     void save(char *file);
     ~Model();
