@@ -33,14 +33,14 @@ double Model::grad_common(int user, int rating, double b_u, double alpha_u,
 }
 
 void Model::grad_U(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
-    double eta = 0.008 * pow(0.9, e);
-    double reg = 0.0015;
+    double eta = 0.01;// * pow(0.9, e);
+    double reg = 0.01;
     this->del_U = eta * ((reg * *Ui) - (*Vj) * del_common);
 }
 
 void Model::grad_V(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
-    double eta = 0.008 * pow(0.9, e);
-    double reg = 0.0015;
+    double eta = 0.01;// * pow(0.9, e);
+    double reg = 0.01;
     this->del_V = eta * ((reg * *Vj) - *Ui * del_common);
 }
 
@@ -51,8 +51,10 @@ double Model::grad_b_u(double del_common, double b_u) {
 }
 
 double Model::grad_alpha_u(double del_common, int user, int time, double alpha_u) {
-    double eta = 3.11 * pow(10, -6);
-    double reg = 395 * pow(10, -2);
+    // double eta = 3.11 * pow(10, -6);
+    // double reg = 395 * pow(10, -2);
+    double eta = 0.01 * pow(10, -3);
+    double reg = 5000 * pow(10, -2);
     return -eta * devUser(time, this->t_u[user - 1]) * del_common
            + eta * reg * alpha_u;
 }
@@ -217,8 +219,12 @@ vector<double> Model::predict() {
 
 void Model::train() {
 
-    this->U = Mat<double>(this->params.K, this->params.M, fill::zeros);
-    this->V = Mat<double>(this->params.K, this->params.N, fill::zeros);
+    this->U = Mat<double>(this->params.K, this->params.M, fill::randu);
+    this->V = Mat<double>(this->params.K, this->params.N, fill::randu) ;
+    this->U /= pow(10,2);
+    this->V /= pow(10,2);
+    this->U -= 0.5 * pow(10, -2);
+    this->V -= 0.5 * pow(10, -2);
 
     this->b_u = Col<double>(this->params.M, fill::zeros);
     this->alpha_u = Col<double>(this->params.M, fill::zeros);
