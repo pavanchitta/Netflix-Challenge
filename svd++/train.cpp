@@ -1,7 +1,7 @@
 #include <vector>
 #include <stdio.h>
 
-#include "time_svd.h"
+#include "svd_plus.h"
 
 using namespace std;
 
@@ -17,7 +17,7 @@ void writeToFile(string filename, vector<double> preds) {
 
 int main() {
 
-    string train_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/train_probe.dta";
+    string train_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/train.dta";
     string test_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/qual.dta";
     string valid_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/probe.dta";
     int K = 40;
@@ -25,6 +25,7 @@ int main() {
     cout << "Starting training" << endl;
     m.train();
     vector<double> preds = m.predict();
-    writeToFile("/Users/pavanchitta/CS156b-Netflix/svd_test_preds_time_svd50.txt", preds);
+    writeToFile("/Users/rahilbathwal/Library/Mobile Documents/com~apple~CloudDocs/College/Spring 2019/CS 156b/CS156b-Netflix/svd_test_preds.txt", preds);
+
     return 0;
 }

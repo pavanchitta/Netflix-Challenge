@@ -1,4 +1,4 @@
-#include "time_svd.h"
+#include "svd_plus.h"
 #include <stdio.h>
 
 using namespace std;
@@ -26,22 +26,23 @@ Model::~Model() {}
 
 double Model::grad_common(int user, int rating, double b_u, double alpha_u,
                           int time, double b_i, double b_bin, double b_u_tui, double c_u, double b_f_ui,
-                          Col<double> *Ui, Col<double> *Vj) {
-    return (rating - GLOBAL_BIAS - dot(*Ui, *Vj) - b_u
+                          Col<double> *Ui, Col<double> *Vj, Col<double> *y_norm) {
+
+    return (rating - GLOBAL_BIAS - dot(*Ui, *Vj + *y_norm) - b_u
             - alpha_u * this->devUser(time, this->t_u[user - 1])
             - (b_i + b_bin) * c_u - b_u_tui - b_f_ui);
 }
 
 void Model::grad_U(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
-    double eta = 0.01;// * pow(0.9, e);
-    double reg = 0.001;
+    double eta = 0.008 * pow(0.9, e);
+    double reg = 0.0015;
     this->del_U = eta * ((reg * *Ui) - (*Vj) * del_common);
 }
 
-void Model::grad_V(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
-    double eta = 0.01;// * pow(0.9, e);
-    double reg = 0.001;
-    this->del_V = eta * ((reg * *Vj) - *Ui * del_common);
+void Model::grad_V(double del_common, Col<double> *Ui, Col<double> *Vj, Col<double> *y_norm, int e) {
+    double eta = 0.008 * pow(0.9, e);
+    double reg = 0.0015;
+    this->del_V = eta * ((reg * *Vj) - (*Ui + *y_norm)* del_common);
 }
 
 double Model::grad_b_u(double del_common, double b_u) {
@@ -51,10 +52,8 @@ double Model::grad_b_u(double del_common, double b_u) {
 }
 
 double Model::grad_alpha_u(double del_common, int user, int time, double alpha_u) {
-    // double eta = 3.11 * pow(10, -6);
-    // double reg = 395 * pow(10, -2);
-    double eta = 0.01 * pow(10, -3);
-    double reg = 5000 * pow(10, -2);
+    double eta = 3.11 * pow(10, -6);
+    double reg = 395 * pow(10, -2);
     return -eta * devUser(time, this->t_u[user - 1]) * del_common
            + eta * reg * alpha_u;
 }
@@ -89,6 +88,7 @@ double Model::grad_b_f_ui(double del_common, double b_f_ui) {
     return -eta * del_common + eta * reg * b_f_ui;
 }
 
+// Also update N(u)
 void Model::user_frequency() {
     this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
     this->params.Y.reset();
@@ -96,6 +96,9 @@ void Model::user_frequency() {
         NetflixData p = this->params.Y.nextLine();
         int user = p.user;
         int time = p.date;
+        int movie = p.movie;
+        this->N_u[user - 1].push_back(movie - 1);
+        this->N_u_size[user - 1] ++;
         this->f_ui(user - 1, time) += 1;
     }
     for (int user = 0; user < this->params.M; user ++) {
@@ -151,7 +154,8 @@ double Model::trainErr() {
         int bin = time / DAYS_PER_BIN;
         int freq = this->f_ui(user - 1, time);
 
-        loss_err += pow(rating - GLOBAL_BIAS - dot(U.col(user - 1), V.col(movie - 1)) - this->b_u[user - 1]
+        loss_err += pow(rating - GLOBAL_BIAS - dot(U.col(user - 1), V.col(movie - 1) + normalize_sum_y(user))
+                        - this->b_u[user - 1]
                         - (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1] -
                         this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
                         - this->b_u_tui(user - 1, time) - this->b_f_ui(movie - 1, freq), 2);
@@ -178,7 +182,8 @@ double Model::validErr() {
         int bin = time / DAYS_PER_BIN;
         int freq = this->f_ui(user - 1, time);
 
-        loss_err += pow(rating - GLOBAL_BIAS - dot(U.col(user - 1), V.col(movie - 1)) - this->b_u[user - 1]
+        loss_err += pow(rating - GLOBAL_BIAS - dot(U.col(user - 1), V.col(movie - 1) + normalize_sum_y(user))
+                        - this->b_u[user - 1]
                         - (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1] -
                         this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
                         - this->b_u_tui(user - 1, time) - this->b_f_ui(movie - 1, freq), 2);
@@ -205,8 +210,8 @@ vector<double> Model::predict() {
         Col<double> u = this->U.col(user - 1);
         Col<double> v = this->V.col(movie - 1);
 
-        double u_m_inter = dot(u, v);
-        double u_bias = this->b_u[user - 1] + this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
+        double u_m_inter = dot(u, v + normalize_sum_y(user));
+        double u_bias = this->b_u[user] + this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
                         + this->b_u_tui(user - 1, time);
         double m_bias = (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1]
                         + this->b_f_ui(movie - 1, freq);
@@ -217,16 +222,31 @@ vector<double> Model::predict() {
     return preds;
 }
 
+Col<double> Model::normalize_sum_y(int user) {
+    vector<int> movies = this->N_u[user - 1];
+    int size = this->N_u_size[user - 1];
+    Col<double> sum = Col<double>(this->params.K);
+    for (int movie : movies) {
+        Col<double> y_j = this->Y.col(movie);
+        sum += y_j;
+    }
+    return pow(size, -0.5) * sum;
+}
+
+void Model::update_y_vectors(int user, double del_common, Col<double>* Ui, int e) {
+    vector<int> movies = this->N_u[user - 1];
+    int size = this->N_u_size[user - 1];
+    double eta = 0.008 * pow(0.9, e);
+    double reg = 0.0015;
+    for (int movie : movies) {
+        this->Y.col(movie) += eta * (del_common * pow(size, -0.5) * *Ui - reg * this->Y.col(movie));
+    }
+}
+
 void Model::train() {
 
-    this->U = Mat<double>(this->params.K, this->params.M, fill::randu);
-    this->V = Mat<double>(this->params.K, this->params.N, fill::randu) ;
-    this->U /= pow(10,3);
-    this->V /= pow(10,3);
-    this->U -= 0.5 * pow(10, -3);
-    this->V -= 0.5 * pow(10, -3);
-
-
+    this->U = Mat<double>(this->params.K, this->params.M, fill::zeros);
+    this->V = Mat<double>(this->params.K, this->params.N, fill::zeros);
 
     this->b_u = Col<double>(this->params.M, fill::zeros);
     this->alpha_u = Col<double>(this->params.M, fill::zeros);
@@ -240,9 +260,12 @@ void Model::train() {
     this->del_U = Col<double>(this->params.K, fill::zeros);
     this->del_V = Col<double>(this->params.K, fill::zeros);
 
-    this->user_date_avg();
+    this->Y = Mat<double>(this->params.K, this->params.N, fill::zeros);
+    this->N_u = vector<vector<int>>(this->params.M);
+    this->N_u_size = Col<int>(this->params.M, fill::zeros);
+    //this->user_date_avg();
     this->user_frequency();
-    //this->t_u = Col<double>(this->params.M, fill::zeros);
+    this->t_u = Col<double>(this->params.M, fill::zeros);
     //this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
 
     double prev_err = validErr();
@@ -264,11 +287,14 @@ void Model::train() {
             Col<double> u = this->U.col(user - 1);
             Col<double> v = this->V.col(movie - 1);
 
+            // Get the SVD++ specific variables
+            Col<double> y_norm = normalize_sum_y(user);
+
             double del_common = this->grad_common(user, rating, this->b_u[user - 1],
                     this->alpha_u[user - 1], time, this->b_i[movie - 1],
                     this->b_bin(movie - 1, bin), this->b_u_tui(user -1, time),
                     this->c_u[user - 1], this->b_f_ui(movie - 1, freq),
-                    &u, &v);
+                    &u, &v, &y_norm);
 
             double del_b_u = this->grad_b_u(del_common, this->b_u[user - 1]);
             double del_alpha_u = this->grad_alpha_u(del_common, user, time, this->alpha_u[user - 1]);
@@ -280,7 +306,7 @@ void Model::train() {
             double del_b_f_ui = this->grad_b_f_ui(del_common, this->b_f_ui(movie - 1, freq));
 
             this->grad_U(del_common, &u, &v, e);
-            this->grad_V(del_common, &u, &v, e);
+            this->grad_V(del_common, &u, &v, &y_norm, e);
 
             this->b_u[user - 1] -= del_b_u;
             this->alpha_u[user - 1] -= del_alpha_u;
@@ -293,6 +319,8 @@ void Model::train() {
 
             this->U.col(user - 1) -= this->del_U;
             this->V.col(movie - 1) -= this->del_V;
+
+            update_y_vectors(user, del_common, &u, e);
 
         }
 

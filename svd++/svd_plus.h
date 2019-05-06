@@ -29,9 +29,20 @@ class Model {
     Col<double> c_u;
     Mat<double> f_ui;
     Mat<double> b_f_ui;
+    vector<vector<int>> N_u;
+    Col<int> N_u_size;
+    Mat<double> Y;
 
     void user_date_avg();
     void user_frequency();
+
+    Col<double> normalize_sum_y(int user);
+
+    void update_y_vectors(
+        int user,
+        double del_common,
+        Col<double>* Ui,
+        int e);
 
     double devUser(
         int time,
@@ -49,6 +60,7 @@ class Model {
         double del_common,
         Col<double> *Ui,
         Col<double> *Vj,
+        Col<double> *y_norm,
         int e
         );
 
@@ -64,7 +76,8 @@ class Model {
         double c_u,
         double b_f_ui,
         Col<double> *Ui,
-        Col<double> *Vj
+        Col<double> *Vj,
+        Col<double> *y_norm
     );
 
     double grad_b_u(
@@ -115,7 +128,7 @@ class Model {
         string train_filename,
         string test_filename,
         string valid_filename,
-        double max_epochs = 20
+        double max_epochs = 200
      );
 
     vector<double> predict();
