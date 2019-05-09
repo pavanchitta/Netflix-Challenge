@@ -21,7 +21,7 @@ int main() {
     string test_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/qual.dta";
     string valid_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/probe.dta";
     int K = 40;
-    Model m(458293, 17770, K, train_filename, test_filename, valid_filename);
+    TimeSVD m(458293, 17770, K, train_filename, test_filename, valid_filename);
     cout << "Starting training" << endl;
     m.train();
     vector<double> preds = m.predict();

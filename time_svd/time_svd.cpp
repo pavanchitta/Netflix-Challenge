@@ -9,22 +9,22 @@ using namespace std;
 #define MAX_DATE 2300
 #define MAX_FREQ 5
 
-Model::Model(
+TimeSVD::TimeSVD(
             int M,
             int N,
             int K,
             string train_filename,
             string test_filename,
             string valid_filename,
-            double max_epochs
-
-    ) : params( { M, N, K, Data(train_filename), Data(test_filename), Data(valid_filename), max_epochs}){
+            double max_epochs,
+            double initAvg
+    ) : params( { M, N, K, Data(train_filename), Data(test_filename), Data(valid_filename), max_epochs, initAvg}){
 
 }
 
-Model::~Model() {}
+TimeSVD::~TimeSVD() {}
 
-double Model::grad_common(int user, int rating, double b_u, double alpha_u,
+double TimeSVD::grad_common(int user, int rating, double b_u, double alpha_u,
                           int time, double b_i, double b_bin, double b_u_tui, double c_u, double b_f_ui,
                           Col<double> *Ui, Col<double> *Vj) {
     return (rating - GLOBAL_BIAS - dot(*Ui, *Vj) - b_u
@@ -32,25 +32,25 @@ double Model::grad_common(int user, int rating, double b_u, double alpha_u,
             - (b_i + b_bin) * c_u - b_u_tui - b_f_ui);
 }
 
-void Model::grad_U(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
+void TimeSVD::grad_U(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
     double eta = 0.01;// * pow(0.9, e);
     double reg = 0.001;
     this->del_U = eta * ((reg * *Ui) - (*Vj) * del_common);
 }
 
-void Model::grad_V(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
+void TimeSVD::grad_V(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
     double eta = 0.01;// * pow(0.9, e);
     double reg = 0.001;
     this->del_V = eta * ((reg * *Vj) - *Ui * del_common);
 }
 
-double Model::grad_b_u(double del_common, double b_u) {
+double TimeSVD::grad_b_u(double del_common, double b_u) {
     double eta = 2.67 * pow(10, -3);
     double reg = 2.55 * pow(10, -2);
     return -eta * del_common + eta * reg * b_u;
 }
 
-double Model::grad_alpha_u(double del_common, int user, int time, double alpha_u) {
+double TimeSVD::grad_alpha_u(double del_common, int user, int time, double alpha_u) {
     // double eta = 3.11 * pow(10, -6);
     // double reg = 395 * pow(10, -2);
     double eta = 0.01 * pow(10, -3);
@@ -59,37 +59,37 @@ double Model::grad_alpha_u(double del_common, int user, int time, double alpha_u
            + eta * reg * alpha_u;
 }
 
-double Model::grad_b_u_tui(double del_common, double b_u_tui) {
+double TimeSVD::grad_b_u_tui(double del_common, double b_u_tui) {
     double eta = 2.57 * pow(10, -3);
     double reg = 0.231 * pow(10, -2);
     return -eta * del_common + eta * reg * b_u_tui;
 }
 
-double Model::grad_b_i(double del_common, double b_i, double c_u) {
+double TimeSVD::grad_b_i(double del_common, double b_i, double c_u) {
     double eta = 0.488 * pow(10, -3);
     double reg = 2.55 * pow(10, -2);
     return -eta * del_common * c_u + eta * reg * b_i;
 }
 
-double Model::grad_b_bin(double del_common, double b_bin, double c_u) {
+double TimeSVD::grad_b_bin(double del_common, double b_bin, double c_u) {
     double eta = 0.115 * pow(10, -3);
     double reg = 9.29 * pow(10, -2);
     return -eta * del_common * c_u + eta * reg * b_bin;
 }
 
-double Model::grad_c_u(double del_common, double c_u, double b_i, double b_bin) {
+double TimeSVD::grad_c_u(double del_common, double c_u, double b_i, double b_bin) {
     double eta = 5.64 * pow(10, -3);
     double reg = 4.76 * pow(10, -2);
     return -eta * del_common * (b_i + b_bin) + eta * reg * (c_u - 1);
 }
 
-double Model::grad_b_f_ui(double del_common, double b_f_ui) {
+double TimeSVD::grad_b_f_ui(double del_common, double b_f_ui) {
     double eta = 2.36 * pow(10, -3);
     double reg = 1.1 * pow(10, -8);
     return -eta * del_common + eta * reg * b_f_ui;
 }
 
-void Model::user_frequency() {
+void TimeSVD::user_frequency() {
     this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
     this->params.Y.reset();
     while (this->params.Y.hasNext()) {
@@ -109,7 +109,7 @@ void Model::user_frequency() {
     cout << "Finished calculating user_frequency" << endl;
 }
 
-void Model::user_date_avg() {
+void TimeSVD::user_date_avg() {
     this->t_u = Col<double>(this->params.M, fill::zeros);
     Col<double> num_ratings = Col<double>(this->params.M, fill::zeros);
     this->params.Y.reset();
@@ -126,7 +126,7 @@ void Model::user_date_avg() {
     cout << "Finished computing user_avg" << endl;
 }
 
-double Model::devUser(int time, int user_avg) {
+double TimeSVD::devUser(int time, int user_avg) {
     double beta = 0.4;
     if (time > user_avg) {
       return pow(time - user_avg, beta);
@@ -136,7 +136,7 @@ double Model::devUser(int time, int user_avg) {
     }
 }
 
-double Model::trainErr() {
+double TimeSVD::trainErr() {
 
     int num_points = 0;
     double loss_err = 0.0;
@@ -162,7 +162,7 @@ double Model::trainErr() {
     return loss_err / num_points;
 }
 
-double Model::validErr() {
+double TimeSVD::validErr() {
 
     int num_points = 0;
     double loss_err = 0.0;
@@ -189,7 +189,7 @@ double Model::validErr() {
     return loss_err / num_points;
 }
 
-vector<double> Model::predict() {
+vector<double> TimeSVD::predict() {
 
     vector<double> preds;
 
@@ -217,14 +217,14 @@ vector<double> Model::predict() {
     return preds;
 }
 
-void Model::train() {
+void TimeSVD::train() {
 
     this->U = Mat<double>(this->params.K, this->params.M, fill::randu);
     this->V = Mat<double>(this->params.K, this->params.N, fill::randu) ;
-    this->U /= pow(10,3);
-    this->V /= pow(10,3);
-    this->U -= 0.5 * pow(10, -3);
-    this->V -= 0.5 * pow(10, -3);
+    this->U /= this->params.initAvg;
+    this->V /= this->params.initAvg;
+    this->U -= 0.5 * 1 / this->params.initAvg;
+    this->V -= 0.5 * 1 / this->params.initAvg;
 
 
 

@@ -2,6 +2,9 @@
 #include <vector>
 #include <fstream>
 
+#ifndef DATA_H
+#define DATA_H
+
 using namespace std;
 
 typedef struct {
@@ -33,3 +36,5 @@ class Data {
         void reset();
         ~Data();
 };
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef TIMESVD_H
+#define TIMESVD_H
+
 #include "../data_processing/data.h"
 #include <armadillo>
 
@@ -11,11 +14,12 @@ typedef struct {
     Data Y_test;
     Data Y_valid;
     double max_epochs;
-} ModelParams;
+    double initAvg;
+} TimeSVDParams;
 
-class Model {
+class TimeSVD {
 
-    ModelParams params;
+    TimeSVDParams params;
     Mat<double> U;
     Mat<double> V;
     Col<double> del_U;
@@ -108,14 +112,15 @@ class Model {
 
     public:
 
-    Model(
+    TimeSVD(
         int M,
         int N,
         int K,
         string train_filename,
         string test_filename,
         string valid_filename,
-        double max_epochs = 20
+        double max_epochs = 20,
+        double initAvg = pow(10, 3)
      );
 
     vector<double> predict();
@@ -123,6 +128,7 @@ class Model {
     double validErr();
     void train();
     void save(char *file);
-    ~Model();
+    ~TimeSVD();
 
 };
+#endif
