@@ -89,6 +89,3 @@ class TrainModel(BaseModel):
                     # End of epoch
             except tf.errors.OutOfRangeError:
                 pass
-
-    def probe_loss(self, filename):
-        

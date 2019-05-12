@@ -47,6 +47,47 @@ class BaseModel(object):
         #     self.b5 = tfe.Variable(tf.zeros([512]), name='bias_5')
 
 
+    def predict(self, data_test, data_train):
+        user_map = {}
+        test_iterator = data_test.make_one_shot_iterator()
+        train_iterator = data_train.make_one_shot_iterator()
+        predictions = []
+        user_predictions = []
+
+        try:
+            while True:
+                row = test_iterator.get_next()
+                if row[0].numpy() in user_map:
+                    predictions.append(user_predictions[user_map[row[0].numpy()]][row[1]])
+                    continue
+
+                print(row[0])
+                print(user_map)
+
+                while True:
+                    urow = train_iterator.get_next()
+                    user_map = {}
+                    current_user = urow[0]
+
+                    if tf.equal(row[0], current_user):
+                        mat = tf.reshape(tf.sparse.to_dense(urow[1]), (1, -1))
+                        user_map[urow[0].numpy()] = 0
+
+                        for i in range(1000):
+                            urow = train_iterator.get_next()
+                            user_map[urow[0].numpy()] = i + 1
+                            m2 = tf.reshape(tf.sparse.to_dense(urow[1]), (1, -1))
+                            mat = tf.concat([mat, m2], 0)
+
+                    user_predictions = self.forward(mat)
+                    predictions.append(user_predictions[0][row[1]])
+                    break
+
+        except tf.errors.OutOfRangeError:
+            pass
+
+        return predictions
+
     def forward(self, x):
         '''Makes one forward pass and predicts network outputs.'''
         return self.model(x)
