@@ -1,5 +1,6 @@
 #include "svd_plus.h"
 #include <stdio.h>
+#include <assert.h>
 
 using namespace std;
 
@@ -225,10 +226,13 @@ vector<double> Model::predict() {
 Col<double> Model::normalize_sum_y(int user) {
     vector<int> movies = this->N_u[user - 1];
     int size = this->N_u_size[user - 1];
-    Col<double> sum = Col<double>(this->params.K);
+    assert (size = movies.size());
+    Col<double> sum = Col<double>(this->params.K, fill::zeros);
     for (int movie : movies) {
         Col<double> y_j = this->Y.col(movie);
+        // cout << "y_j " << y_j << endl;
         sum += y_j;
+        // cout << "sum " << sum << endl;
     }
     return pow(size, -0.5) * sum;
 }
@@ -245,8 +249,8 @@ void Model::update_y_vectors(int user, double del_common, Col<double>* Ui, int e
 
 void Model::train() {
 
-    this->U = Mat<double>(this->params.K, this->params.M, fill::zeros);
-    this->V = Mat<double>(this->params.K, this->params.N, fill::zeros);
+    this->U = Mat<double>(this->params.K, this->params.M, fill::randu);
+    this->V = Mat<double>(this->params.K, this->params.N, fill::randu);
 
     this->b_u = Col<double>(this->params.M, fill::zeros);
     this->alpha_u = Col<double>(this->params.M, fill::zeros);
@@ -260,13 +264,22 @@ void Model::train() {
     this->del_U = Col<double>(this->params.K, fill::zeros);
     this->del_V = Col<double>(this->params.K, fill::zeros);
 
-    this->Y = Mat<double>(this->params.K, this->params.N, fill::zeros);
+    this->Y = Mat<double>(this->params.K, this->params.N, fill::randu);
     this->N_u = vector<vector<int>>(this->params.M);
     this->N_u_size = Col<int>(this->params.M, fill::zeros);
     //this->user_date_avg();
     this->user_frequency();
     this->t_u = Col<double>(this->params.M, fill::zeros);
     //this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
+
+    this->U /= pow(10, 2);
+    this->V /= pow(10, 2);
+    this->Y /= pow(10, 2);
+
+    this->U -= 0.5 * 1/(pow(10, 2));
+    this->V -= 0.5 * 1/(pow(10, 2));
+    this->Y -= 0.5 * 1/(pow(10, 2));
+
 
     double prev_err = validErr();
     cout << "done" << endl;
@@ -325,19 +338,19 @@ void Model::train() {
         }
 
         this->params.Y.reset();
-        cout << "Train Error " << trainErr() << endl;
-        this->params.Y.reset();
-
-        this->params.Y_valid.reset();
-        curr_err = validErr();
-        cout << "Probe Error " << curr_err << endl;
-        this->params.Y_valid.reset();
-
-        // Early stopping
-        if (prev_err < curr_err) {
-            cout << "Early stopping" << endl;
-            break;
-        }
+        // cout << "Train Error " << trainErr() << endl;
+        // this->params.Y.reset();
+        //
+        // this->params.Y_valid.reset();
+        // curr_err = validErr();
+        // cout << "Probe Error " << curr_err << endl;
+        // this->params.Y_valid.reset();
+        //
+        // // Early stopping
+        // if (prev_err < curr_err) {
+        //     cout << "Early stopping" << endl;
+        //     break;
+        // }
 
         prev_err = curr_err;
 

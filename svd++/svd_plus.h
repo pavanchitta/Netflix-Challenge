@@ -128,7 +128,7 @@ class Model {
         string train_filename,
         string test_filename,
         string valid_filename,
-        double max_epochs = 200
+        double max_epochs = 20
      );
 
     vector<double> predict();
