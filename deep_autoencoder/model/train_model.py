@@ -70,7 +70,7 @@ class TrainModel(BaseModel):
                     if (batch_count % 100 == 0):
                         print(batch_count)
 
-                    dense_batch = tf.sparse.to_dense(batch, validate_indices=False)
+                    dense_batch = tf.sparse.to_dense(batch)
 
 
                     # First forward pass

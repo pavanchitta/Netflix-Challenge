@@ -46,47 +46,118 @@ class BaseModel(object):
         #     self.b4 = tfe.Variable(tf.zeros([512]), name='bias_4')
         #     self.b5 = tfe.Variable(tf.zeros([512]), name='bias_5')
 
+    def better_pred(self, test_set, pred_set):
+        test_set = test_set.repeat(1)
+        batch_size = 10000
+        batch_test = test_set.batch(batch_size)
+        test_iterator = batch_test.make_one_shot_iterator()
 
-    def predict(self, data_test, data_train):
-        user_map = {}
-        test_iterator = data_test.make_one_shot_iterator()
-        train_iterator = data_train.make_one_shot_iterator()
-        predictions = []
-        user_predictions = []
+        batched_predictions = pred_set.batch(batch_size)
+        pred_iterator = batched_predictions.make_one_shot_iterator()
+        pred_batch = pred_iterator.get_next()
 
+        curr_preds = self.forward(pred_batch[1])
+
+        row_batch = test_iterator.get_next()
+        curr_movies = row_batch[0]
+        batch_count = 0
+
+
+
+
+
+        total_predictions = []
         try:
             while True:
-                row = test_iterator.get_next()
-                if row[0].numpy() in user_map:
-                    predictions.append(user_predictions[user_map[row[0].numpy()]][row[1]])
-                    continue
+                total_predictions = tf.concat([tf.gather_nd(curr_preds, curr_movies), total_predictions], 0)
+                pred_batch = pred_iterator.get_next()
 
-                print(row[0])
-                print(user_map)
+                curr_preds = self.forward(pred_batch[1])
 
-                while True:
-                    urow = train_iterator.get_next()
-                    user_map = {}
-                    current_user = urow[0]
+                row_batch = test_iterator.get_next()
+                curr_movies = row_batch[0]
+                batch_count += 1
+                print(batch_count)
 
-                    if tf.equal(row[0], current_user):
-                        mat = tf.reshape(tf.sparse.to_dense(urow[1]), (1, -1))
-                        user_map[urow[0].numpy()] = 0
 
-                        for i in range(1000):
-                            urow = train_iterator.get_next()
-                            user_map[urow[0].numpy()] = i + 1
-                            m2 = tf.reshape(tf.sparse.to_dense(urow[1]), (1, -1))
-                            mat = tf.concat([mat, m2], 0)
 
-                    user_predictions = self.forward(mat)
-                    predictions.append(user_predictions[0][row[1]])
-                    break
+
 
         except tf.errors.OutOfRangeError:
             pass
 
-        return predictions
+        return total_predictions
+
+
+
+
+
+    def predict(self, test_set, pred_set):
+        test_set = test_set.repeat(1)
+        batch_size = 1000
+        batch_test = test_set.batch(2000)
+        test_iterator = batch_test.make_one_shot_iterator()
+
+        batched_predictions = pred_set.batch(batch_size)
+        pred_iterator = batched_predictions.make_one_shot_iterator()
+        pred_batch = pred_iterator.get_next()
+
+        curr_preds = self.forward(pred_batch[1])
+        row_batch = test_iterator.get_next()
+        j = 0
+        user, movie = row_batch[0], row_batch[1]
+
+        total_predictions = []
+        count = 0
+        try:
+            while True:
+                for i in range(batch_size):
+                    count += 1
+
+                    if count % 2000 == 0:
+
+                        print(count)
+
+                    def body(predictions, j, user, movie):
+                        predictions = tf.concat([[curr_preds[i][movie[j] - 1]], predictions], 0)
+                        j += 1
+                        if j == 2000:
+                            j = 0
+                            row_batch = test_iterator.get_next()
+                            user, movie = row_batch[0], row_batch[1]
+
+                        return predictions, j, user, movie
+
+                    def cond(predictions, j, user, movie):
+
+                        return tf.equal(user[j], pred_batch[0][i])
+
+                    predictions, j, user, movie = tf.while_loop(cond, body, [[], j, user, movie])
+                    total_predictions = tf.concat([total_predictions, predictions], 0)
+
+                pred_batch = pred_iterator.get_next()
+                curr_preds = self.forward(pred_batch[1])
+
+        except tf.errors.OutOfRangeError:
+            pass
+
+        return total_predictions
+
+    def rmse(self, predictions, label_set):
+        rmse = 0
+        label_set = label_set.repeat(1)
+        label_batch = label_set.batch(100000)
+        #test_iterator = test_set.make_one_shot_iterator()
+        label_iterator = label_batch.make_one_shot_iterator()
+        # try:
+        #     while True:
+        #
+        #
+        # except tf.errors.OutOfRangeError:
+        #     pass
+
+
+
 
     def forward(self, x):
         '''Makes one forward pass and predicts network outputs.'''
