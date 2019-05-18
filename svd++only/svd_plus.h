@@ -29,6 +29,8 @@ class Model {
 
     void movies_per_user();
 
+    void initialize_y_norm();
+
     void update_y_vectors(
         int user,
         double del_common,
