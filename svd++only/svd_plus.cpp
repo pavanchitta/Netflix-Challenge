@@ -171,9 +171,11 @@ void Model::update_y_vectors(int user, double del_common, Col<double>* Ui, int e
         sum += this->Y.col(movie);
     }
 
-    
+    if (isnan(sum[0])) {
+        cout << "sum nan" << endl;
+    }
 
-    this->Y_norm.col(user - 1) =  pow(size, -0.5) * sum;
+    this->Y_norm.col(user - 1) = pow(size, -0.5) * sum;
 }
 
 void Model::train() {
