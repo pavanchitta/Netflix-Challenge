@@ -95,7 +95,7 @@ class BaseModel(object):
 
     def pred_with_RMSE(self, test_set, pred_set):
         test_set = test_set.repeat(1)
-        batch_size = 1280
+        batch_size = 12800
         test_iterator = test_set.make_one_shot_iterator()
 
         batched_predictions = pred_set.batch(batch_size)
@@ -117,20 +117,22 @@ class BaseModel(object):
             while True:
                 predictions = []
                 for i in range(batch_size):
+
                     test_preds = tf.reshape(tf.gather(curr_preds[i], curr_movies), [-1])
 
                     error = tf.reduce_sum(tf.square(tf.subtract(test_preds, curr_ratings)))
 
                     RMSE = tf.add(RMSE, error)
 
-                    predictions = tf.concat([tf.reshape(tf.gather(curr_preds[i], curr_movies), [-1]), predictions], 0)
+                    predictions = tf.concat([test_preds, predictions], 0)
                     row_batch = test_iterator.get_next()
                     curr_movies = row_batch[0]
                     curr_ratings = row_batch[1]
 
+
+                print(batch_count)
                 pred_batch = pred_iterator.get_next()
                 curr_preds = self.forward(tf.sparse.to_dense(pred_batch))
-
                 batch_count += batch_size
                 print(batch_count)
 

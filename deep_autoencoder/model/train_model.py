@@ -7,7 +7,7 @@ class ModelParams():
         self.l2_reg = l2_reg
         self.lambda_ = lambda_
         self.num_mov = num_movies
-        self.num_epochs = 2
+        self.num_epochs = 10
         self.learning_rate = 0.005
 
 class TrainModel(BaseModel):
@@ -51,7 +51,7 @@ class TrainModel(BaseModel):
         with tf.GradientTape() as tape:
             loss_val = self.loss(inputs)
 
-        return tape.gradient(loss_val, self.get_variables())
+        return loss_val, tape.gradient(loss_val, self.get_variables())
 
 
     def train(self, dataset, probe_set, train_for_preds):
@@ -60,26 +60,32 @@ class TrainModel(BaseModel):
         batched_dataset = dataset.batch(128)
         iterator = batched_dataset.make_one_shot_iterator()
         batch_count = 0
+        total_loss = tf.constant(0.)
         for epoch in range(self.FLAGS.num_epochs):
             try:
                 while True:
                     batch = iterator.get_next()
                     batch_count += 1
-                    if (batch_count % 1000 == 0):
-
+                    if (batch_count % 100 == 0):
                         print(batch_count)
+                        print(tf.math.divide(total_loss, 100))
+                        total_loss = tf.constant(0.)
+
+
 
                     dense_batch = tf.sparse.to_dense(batch)
 
 
                     # First forward pass
                     predictions = self.forward(dense_batch)
-                    grads = self.grad(dense_batch)
+                    loss, grads = self.grad(dense_batch)
+
+                    total_loss = tf.add(total_loss, loss)
 
                     # First backward pass
                     optimizer.apply_gradients(zip(grads, self.get_variables()))
                     # Second forward pass
-                    grads2 = self.grad(predictions)
+                    _, grads2 = self.grad(predictions)
                     # Second backward pass
                     optimizer.apply_gradients(zip(grads2, self.get_variables()))
                     #self.model.save('model_1')
@@ -87,7 +93,8 @@ class TrainModel(BaseModel):
 
                     # End of epoch
             except tf.errors.OutOfRangeError:
-                predictions, RMSE = self.pred_with_RMSE(probe_set, train_for_preds)
-                print(RMSE)
                 batched_dataset = dataset.batch(128)
                 iterator = batched_dataset.make_one_shot_iterator()
+                shuffle(batched_dataset, 460000)
+        predictions, RMSE = self.pred_with_RMSE(probe_set, train_for_preds)
+        print(RMSE)
