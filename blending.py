@@ -15,7 +15,10 @@ def quiz_blend(preds, rmses):
 rmses = []
 preds = []
 
+count = 1
 for filename in os.listdir(os.getcwd() + '/preds'):
+    print(count)
+    count += 1
     if filename.endswith(".txt"):
         pred = np.loadtxt('preds/' + filename)
         preds.append(pred)
