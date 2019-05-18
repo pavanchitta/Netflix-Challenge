@@ -39,7 +39,7 @@ class TrainModel(BaseModel):
         with tf.name_scope('loss'):
             loss = tf.math.divide(tf.reduce_sum(tf.square(tf.subtract(predictions, inputs))), num_train_labels)
 
-        print(loss)
+        #print(loss)
 
         if self.FLAGS.l2_reg==True:
             l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()])
@@ -54,20 +54,19 @@ class TrainModel(BaseModel):
         return tape.gradient(loss_val, self.get_variables())
 
 
-    def train(self, dataset):
+    def train(self, dataset, probe_set, train_for_preds):
         optimizer = tf.train.MomentumOptimizer(self.FLAGS.learning_rate, 0.9)
         global_step = tf.Variable(0)
         batched_dataset = dataset.batch(128)
-        #print(dataset[10])
         iterator = batched_dataset.make_one_shot_iterator()
         batch_count = 0
         for epoch in range(self.FLAGS.num_epochs):
-            # Figure out a way to iterate over the dataset, use batches
             try:
                 while True:
                     batch = iterator.get_next()
                     batch_count += 1
-                    if (batch_count % 100 == 0):
+                    if (batch_count % 1000 == 0):
+
                         print(batch_count)
 
                     dense_batch = tf.sparse.to_dense(batch)
@@ -88,4 +87,7 @@ class TrainModel(BaseModel):
 
                     # End of epoch
             except tf.errors.OutOfRangeError:
-                pass
+                predictions, RMSE = self.pred_with_RMSE(probe_set, train_for_preds)
+                print(RMSE)
+                batched_dataset = dataset.batch(128)
+                iterator = batched_dataset.make_one_shot_iterator()
