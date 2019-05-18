@@ -57,7 +57,7 @@ class BaseModel(object):
         dense_batch = tf.sparse.to_dense(pred_batch)
 
 
-        curr_preds = self.forward(dense_batch)
+        curr_preds = self.forward_pred(dense_batch)
 
         row_batch = test_iterator.get_next()
         curr_movies = row_batch[0]
@@ -77,7 +77,7 @@ class BaseModel(object):
                     curr_movies = row_batch[0]
 
                 pred_batch = pred_iterator.get_next()
-                curr_preds = self.forward(tf.sparse.to_dense(pred_batch))
+                curr_preds = self.forward_pred(tf.sparse.to_dense(pred_batch))
 
                 batch_count += batch_size
                 print(batch_count)
@@ -104,7 +104,7 @@ class BaseModel(object):
         dense_batch = tf.sparse.to_dense(pred_batch)
 
 
-        curr_preds = self.forward(dense_batch)
+        curr_preds = self.forward_pred(dense_batch)
 
         row_batch = test_iterator.get_next()
         curr_movies = row_batch[0]
@@ -132,7 +132,7 @@ class BaseModel(object):
 
                 print(batch_count)
                 pred_batch = pred_iterator.get_next()
-                curr_preds = self.forward(tf.sparse.to_dense(pred_batch))
+                curr_preds = self.forward_pred(tf.sparse.to_dense(pred_batch))
                 batch_count += batch_size
                 print(batch_count)
 
@@ -199,6 +199,20 @@ class BaseModel(object):
             pass
 
         return total_predictions
+
+    def forward_pred(self, x):
+        '''Makes one forward pass and predicts network outputs.'''
+        #return self.model(x)
+        with tf.name_scope('inference'):
+            a1 = tf.nn.selu(tf.nn.bias_add(tf.matmul(x, self.W_1), self.b1))
+            a2 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a1, self.W_2), self.b2))
+            a3 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a2, self.W_3), self.b3))
+            #a3 = tf.nn.dropout(a3, rate=0.8)
+            a4 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a3, tf.transpose(self.W_3)), self.b4))
+            a5 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a4, tf.transpose(self.W_2)), self.b5))
+            a6 = tf.nn.selu(tf.matmul(a5, tf.transpose(self.W_1)))
+
+        return a6
 
     def forward(self, x):
         '''Makes one forward pass and predicts network outputs.'''
