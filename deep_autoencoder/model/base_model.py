@@ -95,8 +95,8 @@ class BaseModel(object):
 
     def pred_with_RMSE(self, test_set, pred_set):
         test_set = test_set.repeat(1)
-        batch_size = 12800
-        test_iterator = test_set.make_one_shot_iterator()
+        batch_size = 128
+        test_iterator = test_set.batch(batch_size).make_one_shot_iterator()
 
         batched_predictions = pred_set.batch(batch_size)
         pred_iterator = batched_predictions.make_one_shot_iterator()
@@ -118,35 +118,22 @@ class BaseModel(object):
         try:
             while True:
                 predictions = []
-                for i in range(tf.shape(curr_preds)[0]):
-                    row_batch = test_iterator.get_next()
-                    curr_movies = row_batch[0]
-                    curr_ratings = row_batch[1]
+                row_batch = test_iterator.get_next()
 
-                    test_preds = tf.reshape(tf.gather(curr_preds[i], curr_movies), [-1])
+                test_preds = tf.gather_nd(curr_preds, row_batch.indices)
+                error = tf.reduce_sum(tf.square(tf.subtract(test_preds, row_batch.values)))
+                RMSE = tf.add(RMSE, error)
 
-                    error = tf.reduce_sum(tf.square(tf.subtract(test_preds, curr_ratings)))
+                total_predictions = tf.concat([test_preds, total_predictions], 0)
 
-                    RMSE = tf.add(RMSE, error)
-
-                    predictions = tf.concat([predictions, test_preds], 0)
-                    actual = tf.concat([actual, curr_ratings], 0)
-
-                print(batch_count)
                 batch_count += batch_size
-                total_predictions = tf.concat([total_predictions, predictions], 0)
+
                 pred_batch = pred_iterator.get_next()
                 curr_preds = self.forward_pred(tf.sparse.to_dense(pred_batch))
-                print(batch_count)
-
 
         except tf.errors.OutOfRangeError:
             pass
 
-        print(total_predictions)
-        print(actual)
-        print(tf.size(total_predictions))
-        print(RMSE)
         total_error = tf.math.sqrt(tf.math.divide(RMSE, tf.to_float(tf.size(total_predictions))))
 
         return total_predictions, total_error
