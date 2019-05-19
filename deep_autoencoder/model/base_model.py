@@ -4,14 +4,14 @@ tfe = tf.contrib.eager
 class BaseModel(object):
 
     def __init__(self, FLAGS):
-        self.weight_initializer=tf.random_normal_initializer(mean=0.0, stddev=0.2)
+        self.weight_initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1)
         self.bias_initializer=tf.zeros_initializer()
         self.FLAGS=FLAGS
         self.session = tf.Session()
 
     def get_variables(self):
         #return self.model.trainable_variables
-        return [self.W_1, self.W_2, self.W_3, self.b1, self.b2, self.b3, self.b4, self.b5]
+        return [self.W_1, self.W_2, self.W_3, self.b1, self.b2, self.b3, self.b4, self.b5, self.b6]
 
     def _init_parameters(self):
         tf.enable_resource_variables()
@@ -45,6 +45,7 @@ class BaseModel(object):
             self.b3 = tfe.Variable(tf.zeros([1024]), name='bias_3')
             self.b4 = tfe.Variable(tf.zeros([512]), name='bias_4')
             self.b5 = tfe.Variable(tf.zeros([512]), name='bias_5')
+            self.b6 = tfe.Variable(tf.zeros([17770]), name='bias_6')
 
     def better_pred(self, test_set, pred_set):
         test_set = test_set.repeat(1)
@@ -63,10 +64,6 @@ class BaseModel(object):
         curr_movies = row_batch[0]
         batch_count = 0
 
-
-
-
-
         total_predictions = []
         try:
             while True:
@@ -79,6 +76,7 @@ class BaseModel(object):
                 pred_batch = pred_iterator.get_next()
                 curr_preds = self.forward_pred(tf.sparse.to_dense(pred_batch))
 
+                print(curr_preds)
                 batch_count += batch_size
                 print(batch_count)
 
@@ -106,17 +104,22 @@ class BaseModel(object):
 
         curr_preds = self.forward_pred(dense_batch)
 
-        row_batch = test_iterator.get_next()
-        curr_movies = row_batch[0]
-        curr_ratings = row_batch[1]
+        row_batch = None 
+        curr_movies = None
+        curr_ratings = None 
         batch_count = 0
 
         total_predictions = []
+        actual = []
+
         RMSE = 0
         try:
             while True:
                 predictions = []
-                for i in range(batch_size):
+                for i in range(tf.shape(curr_preds)[0]):
+                    row_batch = test_iterator.get_next()
+                    curr_movies = row_batch[0]
+                    curr_ratings = row_batch[1]
 
                     test_preds = tf.reshape(tf.gather(curr_preds[i], curr_movies), [-1])
 
@@ -124,30 +127,27 @@ class BaseModel(object):
 
                     RMSE = tf.add(RMSE, error)
 
-                    predictions = tf.concat([test_preds, predictions], 0)
-                    row_batch = test_iterator.get_next()
-                    curr_movies = row_batch[0]
-                    curr_ratings = row_batch[1]
-
+                    predictions = tf.concat([predictions, test_preds], 0)
+                    actual = tf.concat([actual, curr_ratings], 0)
 
                 print(batch_count)
+                batch_count += batch_size
+                total_predictions = tf.concat([total_predictions, predictions], 0)
                 pred_batch = pred_iterator.get_next()
                 curr_preds = self.forward_pred(tf.sparse.to_dense(pred_batch))
-                batch_count += batch_size
                 print(batch_count)
 
-                total_predictions = tf.concat([total_predictions, predictions], 0)
 
         except tf.errors.OutOfRangeError:
             pass
 
+        print(total_predictions)
+        print(actual)
+        print(tf.size(total_predictions))
+        print(RMSE)
         total_error = tf.math.sqrt(tf.math.divide(RMSE, tf.to_float(tf.size(total_predictions))))
 
         return total_predictions, total_error
-
-
-
-
 
     def predict(self, test_set, pred_set):
         test_set = test_set.repeat(1)
@@ -207,10 +207,10 @@ class BaseModel(object):
             a1 = tf.nn.selu(tf.nn.bias_add(tf.matmul(x, self.W_1), self.b1))
             a2 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a1, self.W_2), self.b2))
             a3 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a2, self.W_3), self.b3))
-            #a3 = tf.nn.dropout(a3, rate=0.8)
+            # a3 = tf.nn.dropout(a3, rate=0.8)
             a4 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a3, tf.transpose(self.W_3)), self.b4))
             a5 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a4, tf.transpose(self.W_2)), self.b5))
-            a6 = tf.nn.selu(tf.matmul(a5, tf.transpose(self.W_1)))
+            a6 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a5, tf.transpose(self.W_1)), self.b6))
 
         return a6
 
@@ -224,6 +224,6 @@ class BaseModel(object):
             a3 = tf.nn.dropout(a3, rate=0.8)
             a4 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a3, tf.transpose(self.W_3)), self.b4))
             a5 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a4, tf.transpose(self.W_2)), self.b5))
-            a6 = tf.nn.selu(tf.matmul(a5, tf.transpose(self.W_1)))
+            a6 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a5, tf.transpose(self.W_1)), self.b6))
 
         return a6

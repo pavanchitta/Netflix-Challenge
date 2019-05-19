@@ -34,8 +34,8 @@ def _test_parse_function(array):
 
     return { 0: movies, 1: ratings }
 
-dset = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/train_4_pred_edited.dta")
-probe_set = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/probe_edited.dta")
+dset = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/train_4_pred_edited.dta")
+probe_set = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/probe_edited.dta")
 model = train_model.TrainModel(train_model.ModelParams(False,1,17770))
 
 dataset = dset.map(_user_parse_function)

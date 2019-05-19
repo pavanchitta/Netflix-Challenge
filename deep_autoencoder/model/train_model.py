@@ -7,7 +7,7 @@ class ModelParams():
         self.l2_reg = l2_reg
         self.lambda_ = lambda_
         self.num_mov = num_movies
-        self.num_epochs = 10
+        self.num_epochs = 20 
         self.learning_rate = 0.005
 
 class TrainModel(BaseModel):
@@ -61,6 +61,7 @@ class TrainModel(BaseModel):
         iterator = batched_dataset.make_one_shot_iterator()
         batch_count = 0
         total_loss = tf.constant(0.)
+        print(self.W_1)
         for epoch in range(self.FLAGS.num_epochs):
             try:
                 while True:
@@ -77,7 +78,7 @@ class TrainModel(BaseModel):
 
 
                     # First forward pass
-                    predictions = self.forward(dense_batch)
+                    predictions = self.forward_pred(dense_batch)
                     loss, grads = self.grad(dense_batch)
 
                     total_loss = tf.add(total_loss, loss)
@@ -93,8 +94,22 @@ class TrainModel(BaseModel):
 
                     # End of epoch
             except tf.errors.OutOfRangeError:
-                batched_dataset = dataset.batch(128)
+                ds = dataset.shuffle(460000)
+                batched_dataset = ds.batch(128)
                 iterator = batched_dataset.make_one_shot_iterator()
-                shuffle(batched_dataset, 460000)
-        predictions, RMSE = self.pred_with_RMSE(probe_set, train_for_preds)
-        print(RMSE)
+
+            print(self.b1)
+            print(self.b2)
+            print(self.b6)
+            print(self.W_1)
+
+            if (epoch + 1) % 10 == 0:
+                predictions, RMSE = self.pred_with_RMSE(probe_set, train_for_preds)
+                print(RMSE)
+
+                saver = tf.contrib.eager.Saver(self.get_variables())
+                saver.save("modelmodel")
+            
+            #train_preds, train_RMSE = self.pred_with_RMSE(train_for_preds, train_for_preds)
+            #print(train_RMSE)
+            #print(train_preds)
