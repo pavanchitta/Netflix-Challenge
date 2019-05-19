@@ -63,14 +63,18 @@ class TrainModel(BaseModel):
         total_loss = tf.constant(0.)
 
         for epoch in range(self.FLAGS.num_epochs):
+            prog_bar = tf.keras.utils.Progbar(460000)
+
             try:
                 while True:
                     batch = iterator.get_next()
                     batch_count += 1
-                    if (batch_count % 100 == 0):
-                        print(batch_count)
-                        print(tf.math.divide(total_loss, 100))
-                        total_loss = tf.constant(0.)
+                    prog_bar.update(batch_count * 128)
+
+                    # if (batch_count % 100 == 0):
+                    #     print(batch_count)
+                    #     print(tf.math.divide(total_loss, 100))
+                    #     total_loss = tf.constant(0.)
 
 
 
