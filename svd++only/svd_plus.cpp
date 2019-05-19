@@ -1,6 +1,7 @@
 #include "svd_plus.h"
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
 
 using namespace std;
 
@@ -72,8 +73,10 @@ void Model::movies_per_user() {
         NetflixData p = this->params.Y.nextLine();
         int user = p.user;
         int movie = p.movie;
+        int rating = p.rating;
         this->N_u[user - 1].push_back(movie);
         this->N_u_size[user - 1] ++;
+        this->Ratings(user - 1, movie - 1) = rating;
     }
     cout << "Finished calculating movies_per_user" << endl;
     this->params.Y.reset();
@@ -97,7 +100,6 @@ double Model::trainErr() {
         int user = p.user;
         int movie = p.movie;
         int rating = p.rating;
-        Col<double> y_norm;
 
         if (seen_user[user - 1] == 0) {
             this->compute_y_norm(user);
@@ -127,10 +129,10 @@ double Model::validErr() {
         int movie = p.movie;
         int rating = p.rating;
 
-        if (seen_user[user - 1] == 0) {
-            this->compute_y_norm(user);
-            seen_user[user - 1] = 1;
-        }
+        // if (seen_user[user - 1] == 0) {
+        //     this->compute_y_norm(user);
+        //     seen_user[user - 1] = 1;
+        // }
 
         loss_err += pow(rating - GLOBAL_BIAS - dot(V.col(movie - 1), U.col(user  - 1) + this->Y_norm.col(user - 1))
                         - this->b_u[user - 1]
@@ -191,12 +193,14 @@ void Model::compute_y_norm(int user) {
 
 void Model::train() {
 
+    srand(time(0));
+
     this->U = Mat<double>(this->params.K, this->params.M, fill::randu);
     this->V = Mat<double>(this->params.K, this->params.N, fill::randu);
 
-    this->b_u = Col<double>(this->params.M, fill::randu);
+    this->b_u = Col<double>(this->params.M, fill::zeros);
 
-    this->b_i = Col<double>(this->params.N, fill::randu);
+    this->b_i = Col<double>(this->params.N, fill::zeros);
 
     this->del_U = Col<double>(this->params.K, fill::zeros);
     this->del_V = Col<double>(this->params.K, fill::zeros);
@@ -205,6 +209,8 @@ void Model::train() {
     this->N_u = vector<vector<int>>(this->params.M);
     this->N_u_size = Col<int>(this->params.M, fill::zeros);
     this->Y_norm = Mat<double>(this->params.K, this->params.M, fill::zeros);
+
+    this->Ratings = Mat<int>(this->params.M, this->params.N, fill::zeros);
 
 
     this->movies_per_user();
@@ -227,54 +233,98 @@ void Model::train() {
     cout << "done" << endl;
     double curr_err = 0.0;
 
+    vector<int> indices;
+    for (int i = 1; i <= this->params.M; i++) indices.push_back(i);
+
     for (int e = 0; e < this->params.max_epochs; e++) {
         cout << "Running Epoch " << e << endl;
         Col<int> seen_user = Col<int>(this->params.M, fill::zeros);
         Col<double> y_norm;
-        while (this->params.Y.hasNext()) {
+        int count;
+        int random;
 
-            NetflixData p = this->params.Y.nextLine();
-            int user = p.user;
-            int movie = p.movie;
-            int rating = p.rating;
+        random_shuffle(indices.begin(), indices.end());
 
-            Col<double> u = this->U.col(user - 1);
-            Col<double> v = this->V.col(movie - 1);
+        for (int user : indices) {
+            vector<int> movies = this->N_u[user - 1];
+            this->compute_y_norm(user);
+            y_norm = this->Y_norm.col(user - 1);
 
-            //Col<double> y_norm = this->Y_norm.col(user - 1);
+            Col<double> u;
+            Col<double> v;
             double del_common;
-            if (seen_user[user - 1] == 0) {
-                this->compute_y_norm(user);
-                y_norm = this->Y_norm.col(user - 1);
+            for (int movie : movies) {
+                int rating = this->Ratings(user - 1, movie - 1);
+                u = this->U.col(user - 1);
+                v = this->V.col(movie - 1);
+
                 del_common = this->grad_common(user, rating, this->b_u[user - 1],
-                        this->b_i[movie - 1],&u, &v, &y_norm);
-                update_y_vectors(user, del_common, &v, e);
-                y_norm = this->Y_norm.col(user - 1);
-                seen_user[user - 1] = 1;
+                            this->b_i[movie - 1],&u, &v, &y_norm);
+
+                double del_b_u = this->grad_b_u(del_common, this->b_u[user - 1]);
+                double del_b_i = this->grad_b_i(del_common, this->b_i[movie - 1]);
+
+                this->grad_U(del_common, &u, &v, e);
+                this->grad_V(del_common, &u, &v, &y_norm, e);
+
+                this->b_u[user - 1] -= del_b_u;
+                this->b_i[movie - 1] -= del_b_i;
+                this->U.col(user - 1) -= this->del_U;
+                this->V.col(movie - 1) -= this->del_V;
+
+
             }
-            else {
-                del_common = this->grad_common(user, rating, this->b_u[user - 1],
-                        this->b_i[movie - 1],&u, &v, &y_norm);
-            }
 
-
-
-            double del_b_u = this->grad_b_u(del_common, this->b_u[user - 1]);
-            double del_b_i = this->grad_b_i(del_common, this->b_i[movie - 1]);
-
-            this->grad_U(del_common, &u, &v, e);
-            this->grad_V(del_common, &u, &v, &y_norm, e);
-
-
-
-
-            this->b_u[user - 1] -= del_b_u;
-            this->b_i[movie - 1] -= del_b_i;
-            this->U.col(user - 1) -= this->del_U;
-            this->V.col(movie - 1) -= this->del_V;
-
+            update_y_vectors(user, del_common, &v, e);
 
         }
+        // while (this->params.Y.hasNext()) {
+        //
+        //     NetflixData p = this->params.Y.nextLine();
+        //     int user = p.user;
+        //     int movie = p.movie;
+        //     int rating = p.rating;
+        //
+        //     Col<double> u = this->U.col(user - 1);
+        //     Col<double> v = this->V.col(movie - 1);
+        //
+        //     //Col<double> y_norm = this->Y_norm.col(user - 1);
+        //     double del_common;
+        //     if (seen_user[user - 1] == 0) {
+        //         random = rand() % this->N_u_size[user - 1] + 1;
+        //         count = 1;
+        //         this->compute_y_norm(user);
+        //         y_norm = this->Y_norm.col(user - 1);
+        //         del_common = this->grad_common(user, rating, this->b_u[user - 1],
+        //                 this->b_i[movie - 1],&u, &v, &y_norm);
+        //         //update_y_vectors(user, del_common, &v, e);
+        //         //y_norm = this->Y_norm.col(user - 1);
+        //         seen_user[user - 1] = 1;
+        //     }
+        //     else {
+        //         count++;
+        //         del_common = this->grad_common(user, rating, this->b_u[user - 1],
+        //                 this->b_i[movie - 1],&u, &v, &y_norm);
+        //     }
+        //
+        //     double del_b_u = this->grad_b_u(del_common, this->b_u[user - 1]);
+        //     double del_b_i = this->grad_b_i(del_common, this->b_i[movie - 1]);
+        //
+        //     this->grad_U(del_common, &u, &v, e);
+        //     this->grad_V(del_common, &u, &v, &y_norm, e);
+        //
+        //     this->b_u[user - 1] -= del_b_u;
+        //     this->b_i[movie - 1] -= del_b_i;
+        //     this->U.col(user - 1) -= this->del_U;
+        //     this->V.col(movie - 1) -= this->del_V;
+        //
+        //     if (count == random) {
+        //         // Reached the last movie of this user
+        //         update_y_vectors(user, del_common, &v, e);
+        //     }
+        //
+        //
+        // }
 
         this->params.Y.reset();
         cout << "Train Error " << trainErr() << endl;
