@@ -4,7 +4,7 @@ tfe = tf.contrib.eager
 class BaseModel(object):
 
     def __init__(self, FLAGS):
-        self.weight_initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1)
+        self.weight_initializer=tf.random_normal_initializer(mean=0.0, stddev=0.0)
         self.bias_initializer=tf.zeros_initializer()
         self.FLAGS=FLAGS
         self.session = tf.Session()
@@ -31,21 +31,23 @@ class BaseModel(object):
             # self.W_1 = tfe.Variable(tf.random_normal([self.FLAGS.num_mov, 512], mean=0.0, stddev=0.2), name='weight_1')
             # self.W_2 = tfe.Variable(tf.random_normal([512, 512], mean=0.0, stddev=0.2), name='weight_2')
             # self.W_3 = tfe.Variable(tf.random_normal([512, 1024], mean=0.0, stddev=0.2), name='weight_3')
-            self.W_1 = tf.get_variable(shape=[self.FLAGS.num_mov, 512], name='weight_1')
-            self.W_2 = tf.get_variable(shape=[512, 512], name='weight_2')
-            self.W_3 = tf.get_variable(shape=[512, 1024], name='weight_3')
+            initializer = tf.contrib.layers.xavier_initializer()
+            self.W_1 = tf.get_variable(shape=[self.FLAGS.num_mov, 512],
+            initializer=initializer, name='weight_1')
+            self.W_2 = tf.get_variable(shape=[512, 512], name='weight_2', initializer=initializer)
+            self.W_3 = tf.get_variable(shape=[512, 1024], name='weight_3', initializer=initializer)
 
             # self.W_4 = tfe.Variable(tf.random_normal([1024, 512], mean=0.0, stddev=0.2), name='weight_4')
             # self.W_5 = tfe.Variable(tf.random_normal([512, 512], mean=0.0, stddev=0.2), name='weight_5')
             # self.W_6 = tfe.Variable(tf.random_normal([512, self.FLAGS.num_mov], mean=0.0, stddev=0.2), name='weight_6')
 
         with tf.name_scope('biases'):
-            self.b1 = tf.Variable(tf.zeros([512]), name='bias_1')
-            self.b2 = tfe.Variable(tf.zeros([512]), name='bias_2')
-            self.b3 = tfe.Variable(tf.zeros([1024]), name='bias_3')
-            self.b4 = tfe.Variable(tf.zeros([512]), name='bias_4')
-            self.b5 = tfe.Variable(tf.zeros([512]), name='bias_5')
-            self.b6 = tfe.Variable(tf.zeros([17770]), name='bias_6')
+            self.b1 = tf.get_variable(shape=[512], name='bias_1', initializer=self.bias_initializer)
+            self.b2 = tf.get_variable(shape=[512], name='bias_2', initializer=self.bias_initializer)
+            self.b3 = tf.get_variable(shape=[1024], name='bias_3', initializer=self.bias_initializer)
+            self.b4 = tf.get_variable(shape=[512], name='bias_4', initializer=self.bias_initializer)
+            self.b5 = tf.get_variable(shape=[512], name='bias_5', initializer=self.bias_initializer)
+            self.b6 = tf.get_variable(shape=[17770], name='bias_6', initializer=self.bias_initializer)
 
     def better_pred(self, test_set, pred_set):
         test_set = test_set.repeat(1)
@@ -104,9 +106,9 @@ class BaseModel(object):
 
         curr_preds = self.forward_pred(dense_batch)
 
-        row_batch = None 
+        row_batch = None
         curr_movies = None
-        curr_ratings = None 
+        curr_ratings = None
         batch_count = 0
 
         total_predictions = []
