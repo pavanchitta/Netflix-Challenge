@@ -29,7 +29,10 @@ class Model {
 
     void movies_per_user();
 
-    void initialize_y_norm();
+    //void initialize_y_norm();
+
+    //void update_y_norm(int user);
+    void compute_y_norm(int user);
 
     void update_y_vectors(
         int user,
@@ -83,7 +86,7 @@ class Model {
         string train_filename,
         string test_filename,
         string valid_filename,
-        double max_epochs = 20
+        double max_epochs = 50
      );
 
     vector<double> predict();
