@@ -7,7 +7,7 @@ class ModelParams():
         self.l2_reg = l2_reg
         self.lambda_ = lambda_
         self.num_mov = num_movies
-        self.num_epochs = 20 
+        self.num_epochs = 20
         self.learning_rate = 0.005
 
 class TrainModel(BaseModel):
@@ -18,40 +18,49 @@ class TrainModel(BaseModel):
 
         self._init_parameters()
 
-    def loss(self, inputs):
+    def loss(self, inputs, target):
         '''Compute the error on a forward pass, and return those predictions.'''
 
         # mask = tf.not_equal(inputs, 0.0)
         # non_zero_array = tf.boolean_mask(inputs, mask)
         # print(non_zero_array)
+        with tf.name_scope('loss'):
 
-        predictions = self.forward(inputs)
+            predictions = self.forward(inputs)
         # mask2 = tf.not_equal(predictions, 0.0)
         # non_zero_array2 = tf.boolean_mask(predictions, mask2)
         # print(non_zero_array2)
-        num_train_labels = tf.count_nonzero(inputs, dtype=tf.float32)
+            num_train_labels = tf.count_nonzero(inputs, dtype=tf.float32)
 
         # Sets outputs to 0 where corresponding inputs are 0
-        predictions = tf.where(tf.equal(inputs, 0.0), tf.zeros_like(predictions), predictions)
+            predictions = tf.where(tf.equal(inputs, 0.0), tf.zeros_like(predictions), predictions)
         #print(tf.count_nonzero(inputs))
 
 
-        with tf.name_scope('loss'):
-            loss = tf.math.divide(tf.reduce_sum(tf.square(tf.subtract(predictions, inputs))), num_train_labels)
+
+            loss = tf.math.divide(tf.reduce_sum(tf.square(tf.subtract(predictions, target))), num_train_labels)
 
         #print(loss)
-
-        if self.FLAGS.l2_reg==True:
-            l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()])
-            loss += self.FLAGS.lambda_ * l2_loss
-
         return loss
 
-    def grad(self, inputs):
+    # def compute_loss(self, predictions, labels, num_labels):
+    #     with tf.name_scope('loss'):
+    #         loss_op = tf.math.divide(tf.reduce_sum(tf.square(tf.subtract(predictions, labels))), num_labels)
+
+    def grad(self, inputs, target):
         with tf.GradientTape() as tape:
-            loss_val = self.loss(inputs)
+            loss_val = self.loss(inputs, target)
 
         return loss_val, tape.gradient(loss_val, self.get_variables())
+
+    # def optimizer(self, inputs):
+    #     predictions = self.forward(inputs)
+    #     num_train_labels = tf.count_nonzero(inputs, dtype=float32)
+    #     predictions = tf.where(tf.equal(inputs, 0.0), tf.zeros_like(predicitions), predictions)
+    #     loss = self.compute_loss(predictions, inputs, num_train_labels)
+    #
+    #     train_op = tf.train.MomentumOptimizer(self.FLAGS.learning_rate, 0.9).minimize(loss)
+    #     return train_op, loss
 
 
     def train(self, dataset, probe_set, train_for_preds):
@@ -61,7 +70,6 @@ class TrainModel(BaseModel):
         iterator = batched_dataset.make_one_shot_iterator()
         batch_count = 0
         total_loss = tf.constant(0.)
-        print(self.W_1)
         for epoch in range(self.FLAGS.num_epochs):
             try:
                 while True:
@@ -78,17 +86,17 @@ class TrainModel(BaseModel):
 
 
                     # First forward pass
-                    predictions = self.forward_pred(dense_batch)
-                    loss, grads = self.grad(dense_batch)
+                    predictions = self.forward(dense_batch)
+                    loss, grads = self.grad(dense_batch, dense_batch)
 
                     total_loss = tf.add(total_loss, loss)
 
                     # First backward pass
-                    optimizer.apply_gradients(zip(grads, self.get_variables()))
+                    optimizer.apply_gradients(zip(grads, self.get_variables()), global_step)
                     # Second forward pass
-                    _, grads2 = self.grad(predictions)
+                    _, grads2 = self.grad(predictions, predictions)
                     # Second backward pass
-                    optimizer.apply_gradients(zip(grads2, self.get_variables()))
+                    optimizer.apply_gradients(zip(grads2, self.get_variables()), global_step)
                     #self.model.save('model_1')
                     #break
 
@@ -109,7 +117,7 @@ class TrainModel(BaseModel):
 
                 saver = tf.contrib.eager.Saver(self.get_variables())
                 saver.save("modelmodel")
-            
+
             #train_preds, train_RMSE = self.pred_with_RMSE(train_for_preds, train_for_preds)
             #print(train_RMSE)
             #print(train_preds)
