@@ -26,6 +26,7 @@ class Model {
     Col<int> N_u_size;
     Mat<double> Y;
     Mat<double> Y_norm;
+    Mat<int> Ratings;
 
     void movies_per_user();
 
