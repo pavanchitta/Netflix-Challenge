@@ -129,9 +129,6 @@ class BaseModel(object):
                 pred_batch = pred_iterator.get_next()
                 curr_preds = self.forward_pred(tf.sparse.to_dense(pred_batch))
 
-                if (batch_count % 100000 == 0):
-                    print(batch_count)
-
         except tf.errors.OutOfRangeError:
             pass
 

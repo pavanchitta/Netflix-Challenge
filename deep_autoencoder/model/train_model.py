@@ -59,56 +59,47 @@ class TrainModel(BaseModel):
         global_step = tf.Variable(0)
         batched_dataset = dataset.batch(128)
         iterator = batched_dataset.make_one_shot_iterator()
-        batch_count = 0
         total_loss = tf.constant(0.)
+        
+        total_movies = 460000
 
         for epoch in range(self.FLAGS.num_epochs):
-            prog_bar = tf.keras.utils.Progbar(460000)
+            batch_count = 0
+            print()
+            print("Epoch " + str(epoch + 1) + "/" + str(self.FLAGS.num_epochs))
+            prog_bar = tf.keras.utils.Progbar(460000, stateful_metrics=["val_rmse"])
 
             try:
                 while True:
                     batch = iterator.get_next()
                     batch_count += 1
-                    prog_bar.update(batch_count * 128)
-
-                    # if (batch_count % 100 == 0):
-                    #     print(batch_count)
-                    #     print(tf.math.divide(total_loss, 100))
-                    #     total_loss = tf.constant(0.)
-
-
-
+                    
                     dense_batch = tf.sparse.to_dense(batch)
-
 
                     # First forward pass
                     predictions = self.forward_pred(dense_batch)
                     loss, grads = self.grad(dense_batch)
 
-                    total_loss = tf.add(total_loss, loss)
+                    prog_bar.update(128 * batch_count, values=[("train_loss", loss)])
 
                     # First backward pass
                     optimizer.apply_gradients(zip(grads, self.get_variables()))
+            
                     # Second forward pass
                     _, grads2 = self.grad(predictions)
+
                     # Second backward pass
                     optimizer.apply_gradients(zip(grads2, self.get_variables()))
-                    #self.model.save('model_1')
-                    #break
 
                     # End of epoch
+
             except tf.errors.OutOfRangeError:
                 ds = dataset.shuffle(460000)
                 batched_dataset = ds.batch(128)
                 iterator = batched_dataset.make_one_shot_iterator()
 
-        print("Done with training")
-        predictions, RMSE = self.pred_with_RMSE(probe_set, train_for_preds)
-        print(RMSE)
+            predictions, RMSE = self.pred_with_RMSE(probe_set, train_for_preds)
+            prog_bar.update(128 * batch_count, values=[("val_rmse", RMSE)])
 
         saver = tf.contrib.eager.Saver(self.get_variables())
         saver.save("modelmodel")
-
-            #train_preds, train_RMSE = self.pred_with_RMSE(train_for_preds, train_for_preds)
-            #print(train_RMSE)
-            #print(train_preds)
