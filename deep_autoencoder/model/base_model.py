@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 tfe = tf.contrib.eager
 
 class BaseModel(object):
@@ -91,7 +92,47 @@ class BaseModel(object):
 
         total_error = tf.math.sqrt(tf.losses.mean_squared_error(total_predictions, actual))
 
+
         return total_predictions, total_error
+
+    def pred_for_sub(self, test_set, pred_set, submit=True, filename="submission.csv"):
+        test_set = test_set.repeat(1)
+        batch_size = 1280
+        test_iterator = test_set.batch(batch_size).make_one_shot_iterator()
+
+        batched_predictions = pred_set.batch(batch_size)
+        pred_iterator = batched_predictions.make_one_shot_iterator()
+        pred_batch = pred_iterator.get_next()
+        dense_batch = tf.sparse.to_dense(pred_batch)
+
+
+        curr_preds = self.forward_pred(dense_batch)
+
+        batch_count = 0
+
+        total_predictions = []
+
+        try:
+            while True:
+                curr_movies = test_iterator.get_next()[0]
+
+                test_preds = tf.gather_nd(curr_preds, curr_movies)
+
+                total_predictions = tf.concat([total_predictions, test_preds], 0)
+
+                batch_count += batch_size
+
+                pred_batch = pred_iterator.get_next()
+                curr_preds = self.forward_pred(tf.sparse.to_dense(pred_batch))
+
+        except tf.errors.OutOfRangeError:
+            pass
+
+        if submit:
+            submission = total_predictions.numpy()
+            np.savetxt(sub_filename, submission, delimiter=",")
+
+        return total_predictions
 
     def forward_pred(self, x):
         '''Makes one forward pass and predicts network outputs.'''

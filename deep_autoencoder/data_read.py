@@ -34,8 +34,10 @@ def _test_parse_function(array):
 
     return tf.SparseTensor(indices=movies, values=ratings, dense_shape=[17770])
 
-dset = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/train_4_pred_edited.dta")
-probe_set = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/probe_edited.dta")
+
+
+dset = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/train_4_pred_edited.dta")
+probe_set = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/probe_edited.dta")
 model = train_model.TrainModel(train_model.ModelParams(False,1,17770))
 
 dataset = dset.map(_user_parse_function)
@@ -45,3 +47,10 @@ probe_set = probe_set.map(_test_parse_function)
 predict_user_dataset = dset.map(_user_parse_function)
 
 model.train(dataset, probe_set, predict_user_dataset)
+########### Submission ###############
+
+test_set = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/qual_edited.dta")
+dset_train_for_qual = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/train_4_qual_edited.dta")
+test_set = test_set.map(_test_parse_function)
+dset_train_for_qual = dset_train_for_qual.map(_user_parse_function)
+model.pred_for_sub(test_set, dset_train_for_qual)
