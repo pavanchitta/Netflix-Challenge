@@ -27,6 +27,7 @@ class Model {
     Mat<double> Y;
     Mat<double> Y_norm;
     Mat<int> Ratings;
+    vector<vector<int>> Ratings_vec;
 
     void movies_per_user();
 
@@ -37,8 +38,7 @@ class Model {
 
     void update_y_vectors(
         int user,
-        double del_common,
-        Col<double>* Ui,
+        Col<double>* Vj,
         int e);
 
 

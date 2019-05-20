@@ -76,7 +76,7 @@ void Model::movies_per_user() {
         int rating = p.rating;
         this->N_u[user - 1].push_back(movie);
         this->N_u_size[user - 1] ++;
-        this->Ratings(user - 1, movie - 1) = rating;
+        this->Ratings(movie - 1, user - 1) = rating;
     }
     cout << "Finished calculating movies_per_user" << endl;
     this->params.Y.reset();
@@ -164,7 +164,7 @@ vector<double> Model::predict() {
     return preds;
 }
 
-void Model::update_y_vectors(int user, double del_common, Col<double>* Vj, int e) {
+void Model::update_y_vectors(int user, Col<double>* Vj, int e) {
     vector<int> movies = this->N_u[user - 1];
     int size = this->N_u_size[user - 1];
     // double eta = 0.008 * pow(0.9, e);
@@ -173,7 +173,7 @@ void Model::update_y_vectors(int user, double del_common, Col<double>* Vj, int e
     double reg = 0.01;
     Col<double> sum = Col<double>(this->params.K, fill::zeros);
     for (int movie : movies) {
-        this->Y.col(movie - 1) += eta * (del_common * pow(size, -0.5) * *Vj - reg * this->Y.col(movie - 1));
+        this->Y.col(movie - 1) += eta * (pow(size, -0.5) * *Vj - reg * this->Y.col(movie - 1));
         sum += this->Y.col(movie - 1);
     }
     this->Y_norm.col(user - 1) = pow(size, -0.5) * sum;
@@ -184,6 +184,8 @@ void Model::compute_y_norm(int user) {
     vector<int> movies = this->N_u[user -1];
     int size = this->N_u_size[user - 1];
 
+    assert (size > 0);
+
     Col<double> sum = Col<double>(this->params.K, fill::zeros);
     for (int movie : movies) {
         sum += this->Y.col(movie - 1);
@@ -193,7 +195,7 @@ void Model::compute_y_norm(int user) {
 
 void Model::train() {
 
-    srand(time(0));
+    srand(1);
 
     this->U = Mat<double>(this->params.K, this->params.M, fill::randu);
     this->V = Mat<double>(this->params.K, this->params.N, fill::randu);
@@ -205,26 +207,26 @@ void Model::train() {
     this->del_U = Col<double>(this->params.K, fill::zeros);
     this->del_V = Col<double>(this->params.K, fill::zeros);
 
-    this->Y = Mat<double>(this->params.K, this->params.N, fill::randu);
+    this->Y = Mat<double>(this->params.K, this->params.N, fill::zeros);
     this->N_u = vector<vector<int>>(this->params.M);
     this->N_u_size = Col<int>(this->params.M, fill::zeros);
     this->Y_norm = Mat<double>(this->params.K, this->params.M, fill::zeros);
 
-    this->Ratings = Mat<int>(this->params.M, this->params.N, fill::zeros);
+    this->Ratings = Mat<int>(this->params.N, this->params.M, fill::zeros);
 
 
     this->movies_per_user();
 
 
-    this->U /= pow(10, 4);
-    this->V /= pow(10, 4);
-    this->Y /= pow(10, 4);
-    this->b_u /= pow(10, 4);
-    this->b_i /= pow(10, 4);
+    this->U /= pow(10, 2);
+    this->V /= pow(10, 2);
+    //this->Y /= pow(10, 2);
+    this->b_u /= pow(10, 2);
+    this->b_i /= pow(10, 2);
 
-    this->U -= 0.5 * 1/(pow(10, 4));
-    this->V -= 0.5 * 1/(pow(10, 4));
-    this->Y -= 0.5 * 1/(pow(10, 4));
+    // this->U -= 0.5 * 1/(pow(10, 4));
+    // this->V -= 0.5 * 1/(pow(10, 4));
+    // this->Y -= 0.5 * 1/(pow(10, 4));
 
     //this->initialize_y_norm();
 
@@ -233,28 +235,29 @@ void Model::train() {
     cout << "done" << endl;
     double curr_err = 0.0;
 
-    vector<int> indices;
-    for (int i = 1; i <= this->params.M; i++) indices.push_back(i);
+    vector<int> users;
+    for (int i = 1; i <= this->params.M; i++) users.push_back(i);
 
     for (int e = 0; e < this->params.max_epochs; e++) {
         cout << "Running Epoch " << e << endl;
-        Col<int> seen_user = Col<int>(this->params.M, fill::zeros);
         Col<double> y_norm;
-        int count;
-        int random;
 
-        random_shuffle(indices.begin(), indices.end());
+        random_shuffle(users.begin(), users.end());
 
-        for (int user : indices) {
+        for (int user : users) {
             vector<int> movies = this->N_u[user - 1];
+            random_shuffle(movies.begin(), movies.end());
             this->compute_y_norm(user);
             y_norm = this->Y_norm.col(user - 1);
 
             Col<double> u;
             Col<double> v;
             double del_common;
+            Col<int> ratings = Ratings.col(user - 1);
+            Col<double> sum_v = Col<double>(this->params.K, fill::zeros);
+
             for (int movie : movies) {
-                int rating = this->Ratings(user - 1, movie - 1);
+                int rating = ratings[movie - 1];
                 u = this->U.col(user - 1);
                 v = this->V.col(movie - 1);
 
@@ -271,11 +274,11 @@ void Model::train() {
                 this->b_i[movie - 1] -= del_b_i;
                 this->U.col(user - 1) -= this->del_U;
                 this->V.col(movie - 1) -= this->del_V;
+                sum_v += v * del_common;
 
 
             }
-
-            update_y_vectors(user, del_common, &v, e);
+            update_y_vectors(user, &sum_v, e);
 
         }
         // while (this->params.Y.hasNext()) {
