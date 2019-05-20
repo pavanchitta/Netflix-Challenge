@@ -7,10 +7,12 @@ typedef struct {
     int M;
     int N;
     int K;
+    int initAvg;
     Data Y;
     Data Y_test;
     Data Y_valid;
     double max_epochs;
+
 } ModelParams;
 
 class Model {
@@ -84,10 +86,11 @@ class Model {
         int M,
         int N,
         int K,
+        int initAvg,
         string train_filename,
         string test_filename,
         string valid_filename,
-        double max_epochs = 50
+        double max_epochs = 10
      );
 
     vector<double> predict();

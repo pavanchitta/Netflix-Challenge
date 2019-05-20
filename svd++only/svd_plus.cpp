@@ -15,12 +15,13 @@ Model::Model(
             int M,
             int N,
             int K,
+            int initAvg,
             string train_filename,
             string test_filename,
             string valid_filename,
             double max_epochs
 
-    ) : params( { M, N, K, Data(train_filename), Data(test_filename), Data(valid_filename), max_epochs}){
+    ) : params( { M, N, K, initAvg, Data(train_filename), Data(test_filename), Data(valid_filename), max_epochs}){
 
 }
 
@@ -170,7 +171,7 @@ void Model::update_y_vectors(int user, Col<double>* Vj, int e) {
     // double eta = 0.008 * pow(0.9, e);
     // double reg = 0.0015;
     double eta = 0.007;
-    double reg = 0.01;
+    double reg = 0.15;
     Col<double> sum = Col<double>(this->params.K, fill::zeros);
     for (int movie : movies) {
         this->Y.col(movie - 1) += eta * (pow(size, -0.5) * *Vj - reg * this->Y.col(movie - 1));
@@ -195,7 +196,7 @@ void Model::compute_y_norm(int user) {
 
 void Model::train() {
 
-    srand(1);
+    //srand(1);
 
     this->U = Mat<double>(this->params.K, this->params.M, fill::randu);
     this->V = Mat<double>(this->params.K, this->params.N, fill::randu);
@@ -218,11 +219,11 @@ void Model::train() {
     this->movies_per_user();
 
 
-    this->U /= pow(10, 2);
-    this->V /= pow(10, 2);
-    //this->Y /= pow(10, 2);
-    this->b_u /= pow(10, 2);
-    this->b_i /= pow(10, 2);
+    this->U /= 1* this->params.initAvg;
+    this->V /= 1* this->params.initAvg;
+    //this->Y /= 1*pow(10, 2);
+    this->b_u /= 1* this->params.initAvg;
+    this->b_i /= 1* this->params.initAvg;
 
     // this->U -= 0.5 * 1/(pow(10, 4));
     // this->V -= 0.5 * 1/(pow(10, 4));
@@ -281,53 +282,6 @@ void Model::train() {
             update_y_vectors(user, &sum_v, e);
 
         }
-        // while (this->params.Y.hasNext()) {
-        //
-        //     NetflixData p = this->params.Y.nextLine();
-        //     int user = p.user;
-        //     int movie = p.movie;
-        //     int rating = p.rating;
-        //
-        //     Col<double> u = this->U.col(user - 1);
-        //     Col<double> v = this->V.col(movie - 1);
-        //
-        //     //Col<double> y_norm = this->Y_norm.col(user - 1);
-        //     double del_common;
-        //     if (seen_user[user - 1] == 0) {
-        //         random = rand() % this->N_u_size[user - 1] + 1;
-        //         count = 1;
-        //         this->compute_y_norm(user);
-        //         y_norm = this->Y_norm.col(user - 1);
-        //         del_common = this->grad_common(user, rating, this->b_u[user - 1],
-        //                 this->b_i[movie - 1],&u, &v, &y_norm);
-        //         //update_y_vectors(user, del_common, &v, e);
-        //         //y_norm = this->Y_norm.col(user - 1);
-        //         seen_user[user - 1] = 1;
-        //     }
-        //     else {
-        //         count++;
-        //         del_common = this->grad_common(user, rating, this->b_u[user - 1],
-        //                 this->b_i[movie - 1],&u, &v, &y_norm);
-        //     }
-        //
-        //     double del_b_u = this->grad_b_u(del_common, this->b_u[user - 1]);
-        //     double del_b_i = this->grad_b_i(del_common, this->b_i[movie - 1]);
-        //
-        //     this->grad_U(del_common, &u, &v, e);
-        //     this->grad_V(del_common, &u, &v, &y_norm, e);
-        //
-        //     this->b_u[user - 1] -= del_b_u;
-        //     this->b_i[movie - 1] -= del_b_i;
-        //     this->U.col(user - 1) -= this->del_U;
-        //     this->V.col(movie - 1) -= this->del_V;
-        //
-        //     if (count == random) {
-        //         // Reached the last movie of this user
-        //         update_y_vectors(user, del_common, &v, e);
-        //     }
-        //
-        //
-        // }
 
         this->params.Y.reset();
         cout << "Train Error " << trainErr() << endl;
@@ -338,11 +292,11 @@ void Model::train() {
         cout << "Probe Error " << curr_err << endl;
         this->params.Y_valid.reset();
 
-        // // Early stopping
-        // if (prev_err < curr_err) {
-        //     cout << "Early stopping" << endl;
-        //     break;
-        // }
+        // Early stopping
+        if (prev_err < curr_err) {
+            cout << "Early stopping" << endl;
+            break;
+        }
 
         prev_err = curr_err;
 
