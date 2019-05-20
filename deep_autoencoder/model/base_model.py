@@ -10,8 +10,9 @@ class BaseModel(object):
         self.session = tf.Session()
 
     def get_variables(self):
-        #return self.model.trainable_variables
+        # return self.model.trainable_variables
         return [self.W_1, self.W_2, self.W_3, self.b1, self.b2, self.b3, self.b4, self.b5, self.b6]
+        # return [self.W_1, self.b1, self.b2]
 
     def _init_parameters(self):
         tf.enable_resource_variables()
@@ -49,53 +50,9 @@ class BaseModel(object):
             self.b5 = tf.get_variable(shape=[512], name='bias_5', initializer=self.bias_initializer)
             self.b6 = tf.get_variable(shape=[17770], name='bias_6', initializer=self.bias_initializer)
 
-    def better_pred(self, test_set, pred_set):
-        test_set = test_set.repeat(1)
-        batch_size = 1280
-        test_iterator = test_set.make_one_shot_iterator()
-
-        batched_predictions = pred_set.batch(batch_size)
-        pred_iterator = batched_predictions.make_one_shot_iterator()
-        pred_batch = pred_iterator.get_next()
-        dense_batch = tf.sparse.to_dense(pred_batch)
-
-
-        curr_preds = self.forward_pred(dense_batch)
-
-        row_batch = test_iterator.get_next()
-        curr_movies = row_batch[0]
-        batch_count = 0
-
-        total_predictions = []
-        try:
-            while True:
-                predictions = []
-                for i in range(batch_size):
-                    predictions = tf.concat([tf.reshape(tf.gather(curr_preds[i], curr_movies), [-1]), predictions], 0)
-                    row_batch = test_iterator.get_next()
-                    curr_movies = row_batch[0]
-
-                pred_batch = pred_iterator.get_next()
-                curr_preds = self.forward_pred(tf.sparse.to_dense(pred_batch))
-
-                print(curr_preds)
-                batch_count += batch_size
-                print(batch_count)
-
-
-
-                total_predictions = tf.concat([total_predictions, predictions], 0)
-
-        except tf.errors.OutOfRangeError:
-            pass
-
-        print(total_predictions)
-
-        return total_predictions
-
     def pred_with_RMSE(self, test_set, pred_set):
         test_set = test_set.repeat(1)
-        batch_size = 128
+        batch_size = 1280
         test_iterator = test_set.batch(batch_size).make_one_shot_iterator()
 
         batched_predictions = pred_set.batch(batch_size)
@@ -114,17 +71,15 @@ class BaseModel(object):
         total_predictions = []
         actual = []
 
-        RMSE = 0
         try:
             while True:
                 predictions = []
                 row_batch = test_iterator.get_next()
 
                 test_preds = tf.gather_nd(curr_preds, row_batch.indices)
-                error = tf.reduce_sum(tf.square(tf.subtract(test_preds, row_batch.values)))
-                RMSE = tf.add(RMSE, error)
 
-                total_predictions = tf.concat([test_preds, total_predictions], 0)
+                total_predictions = tf.concat([total_predictions, test_preds], 0)
+                actual = tf.concat([actual, row_batch.values], 0)
 
                 batch_count += batch_size
 
@@ -134,69 +89,17 @@ class BaseModel(object):
         except tf.errors.OutOfRangeError:
             pass
 
-        total_error = tf.math.sqrt(tf.math.divide(RMSE, tf.to_float(tf.size(total_predictions))))
+        total_error = tf.math.sqrt(tf.losses.mean_squared_error(total_predictions, actual))
 
         return total_predictions, total_error
 
-    def predict(self, test_set, pred_set):
-        test_set = test_set.repeat(1)
-        batch_size = 1000
-        batch_test = test_set.batch(2000)
-        test_iterator = batch_test.make_one_shot_iterator()
-
-        batched_predictions = pred_set.batch(batch_size)
-        pred_iterator = batched_predictions.make_one_shot_iterator()
-        pred_batch = pred_iterator.get_next()
-
-        curr_preds = self.forward(pred_batch[1])
-        row_batch = test_iterator.get_next()
-        j = 0
-        user, movie = row_batch[0], row_batch[1]
-
-        total_predictions = []
-        count = 0
-        try:
-            while True:
-                for i in range(batch_size):
-                    count += 1
-
-                    if count % 2000 == 0:
-
-                        print(count)
-
-                    def body(predictions, j, user, movie):
-                        predictions = tf.concat([[curr_preds[i][movie[j] - 1]], predictions], 0)
-                        j += 1
-                        if j == 2000:
-                            j = 0
-                            row_batch = test_iterator.get_next()
-                            user, movie = row_batch[0], row_batch[1]
-
-                        return predictions, j, user, movie
-
-                    def cond(predictions, j, user, movie):
-
-                        return tf.equal(user[j], pred_batch[0][i])
-
-                    predictions, j, user, movie = tf.while_loop(cond, body, [[], j, user, movie])
-                    total_predictions = tf.concat([total_predictions, predictions], 0)
-
-                pred_batch = pred_iterator.get_next()
-                curr_preds = self.forward(pred_batch[1])
-
-        except tf.errors.OutOfRangeError:
-            pass
-
-        return total_predictions
-
     def forward_pred(self, x):
         '''Makes one forward pass and predicts network outputs.'''
-        #return self.model(x)
+        # return self.model(x)
         with tf.name_scope('inference'):
             a1 = tf.nn.selu(tf.nn.bias_add(tf.matmul(x, self.W_1), self.b1))
             a2 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a1, self.W_2), self.b2))
             a3 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a2, self.W_3), self.b3))
-            # a3 = tf.nn.dropout(a3, rate=0.8)
             a4 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a3, tf.transpose(self.W_3)), self.b4))
             a5 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a4, tf.transpose(self.W_2)), self.b5))
             a6 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a5, tf.transpose(self.W_1)), self.b6))
@@ -205,7 +108,7 @@ class BaseModel(object):
 
     def forward(self, x):
         '''Makes one forward pass and predicts network outputs.'''
-        #return self.model(x)
+        # return self.model(x)
         with tf.name_scope('inference'):
             a1 = tf.nn.selu(tf.nn.bias_add(tf.matmul(x, self.W_1), self.b1))
             a2 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a1, self.W_2), self.b2))
@@ -214,5 +117,6 @@ class BaseModel(object):
             a4 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a3, tf.transpose(self.W_3)), self.b4))
             a5 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a4, tf.transpose(self.W_2)), self.b5))
             a6 = tf.nn.selu(tf.nn.bias_add(tf.matmul(a5, tf.transpose(self.W_1)), self.b6))
+
 
         return a6

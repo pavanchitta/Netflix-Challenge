@@ -7,8 +7,8 @@ class ModelParams():
         self.l2_reg = l2_reg
         self.lambda_ = lambda_
         self.num_mov = num_movies
-        self.num_epochs = 20
-        self.learning_rate = 0.005
+        self.num_epochs = 50
+        self.learning_rate = 0.002
 
 class TrainModel(BaseModel):
 
@@ -30,17 +30,13 @@ class TrainModel(BaseModel):
         # mask2 = tf.not_equal(predictions, 0.0)
         # non_zero_array2 = tf.boolean_mask(predictions, mask2)
         # print(non_zero_array2)
-            num_train_labels = tf.count_nonzero(inputs, dtype=tf.float32)
+            num_train_labels = tf.count_nonzero(inputs, dtype=tf.float32, axis=1)
 
         # Sets outputs to 0 where corresponding inputs are 0
             predictions = tf.where(tf.equal(inputs, 0.0), tf.zeros_like(predictions), predictions)
         #print(tf.count_nonzero(inputs))
-
-
-
-            loss = tf.math.divide(tf.reduce_sum(tf.square(tf.subtract(predictions, target))), num_train_labels)
-
-        #print(loss)
+            loss = tf.math.divide(tf.reduce_sum(tf.square(tf.subtract(predictions, target)), axis=1), num_train_labels)
+        
         return loss
 
     # def compute_loss(self, predictions, labels, num_labels):
@@ -51,7 +47,13 @@ class TrainModel(BaseModel):
         with tf.GradientTape() as tape:
             loss_val = self.loss(inputs, target)
 
-        return loss_val, tape.gradient(loss_val, self.get_variables())
+        gradient = tape.gradient(loss_val, self.get_variables())
+        gdiv = []
+
+        for g in gradient:
+            gdiv.append(g / tf.to_float(tf.shape(target)[0]))
+
+        return loss_val, gdiv
 
     # def optimizer(self, inputs):
     #     predictions = self.forward(inputs)
@@ -64,6 +66,7 @@ class TrainModel(BaseModel):
 
 
     def train(self, dataset, probe_set, train_for_preds):
+        print(self.FLAGS.learning_rate)
         optimizer = tf.train.MomentumOptimizer(self.FLAGS.learning_rate, 0.9)
         global_step = tf.Variable(0)
         batched_dataset = dataset.batch(128)
@@ -71,7 +74,9 @@ class TrainModel(BaseModel):
         total_loss = tf.constant(0.)
         total_movies = 460000
 
+
         for epoch in range(self.FLAGS.num_epochs):
+            tf.keras.backend.set_learning_phase(1) 
             batch_count = 0
             print()
             print("Epoch " + str(epoch + 1) + "/" + str(self.FLAGS.num_epochs))
@@ -85,17 +90,17 @@ class TrainModel(BaseModel):
                     dense_batch = tf.sparse.to_dense(batch)
 
                     # First forward pass
-                    predictions = self.forward(dense_batch)
+                    # predictions = self.forward(dense_batch)
                     loss, grads = self.grad(dense_batch, dense_batch)
 
-                    prog_bar.update(128 * batch_count, values=[("train_loss", loss)])
+                    prog_bar.update(128 * batch_count, values=[("train_loss", tf.math.reduce_mean(loss))])
 
                     # First backward pass
                     optimizer.apply_gradients(zip(grads, self.get_variables()), global_step)
                     # Second forward pass
-                    _, grads2 = self.grad(predictions, predictions)
+                    # _, grads2 = self.grad(predictions, predictions)
                     # Second backward pass
-                    optimizer.apply_gradients(zip(grads2, self.get_variables()), global_step)
+                    # optimizer.apply_gradients(zip(grads2, self.get_variables()), global_step)
 
                     # End of epoch
 
@@ -104,6 +109,7 @@ class TrainModel(BaseModel):
                 batched_dataset = ds.batch(128)
                 iterator = batched_dataset.make_one_shot_iterator()
 
+            tf.keras.backend.set_learning_phase(0)
             predictions, RMSE = self.pred_with_RMSE(probe_set, train_for_preds)
             prog_bar.update(128 * batch_count, values=[("val_rmse", RMSE)])
 
