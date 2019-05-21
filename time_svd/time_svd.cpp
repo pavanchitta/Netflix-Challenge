@@ -33,14 +33,14 @@ double TimeSVD::grad_common(int user, int rating, double b_u, double alpha_u,
 }
 
 void TimeSVD::grad_U(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
-    double eta = 0.01;// * pow(0.9, e);
-    double reg = 0.001;
+    double eta = 0.007;// * pow(0.9, e);
+    double reg = 0.01;
     this->del_U = eta * ((reg * *Ui) - (*Vj) * del_common);
 }
 
 void TimeSVD::grad_V(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
-    double eta = 0.01;// * pow(0.9, e);
-    double reg = 0.001;
+    double eta = 0.007;// * pow(0.9, e);
+    double reg = 0.01;
     this->del_V = eta * ((reg * *Vj) - *Ui * del_common);
 }
 
@@ -51,10 +51,10 @@ double TimeSVD::grad_b_u(double del_common, double b_u) {
 }
 
 double TimeSVD::grad_alpha_u(double del_common, int user, int time, double alpha_u) {
-    // double eta = 3.11 * pow(10, -6);
-    // double reg = 395 * pow(10, -2);
-    double eta = 0.01 * pow(10, -3);
-    double reg = 5000 * pow(10, -2);
+    double eta = 3.11 * pow(10, -6);
+    double reg = 395 * pow(10, -2);
+    //double eta = 0.01 * pow(10, -3);
+    //double reg = 5000 * pow(10, -2);
     return -eta * devUser(time, this->t_u[user - 1]) * del_common
            + eta * reg * alpha_u;
 }
@@ -220,13 +220,14 @@ vector<double> TimeSVD::predict() {
 void TimeSVD::train() {
 
     this->U = Mat<double>(this->params.K, this->params.M, fill::randu);
-    this->V = Mat<double>(this->params.K, this->params.N, fill::randu) ;
+    this->V = Mat<double>(this->params.K, this->params.N, fill::randu);
+
+    // this->U -= 0.5;
+    // this->V -= 0.5;
     this->U /= this->params.initAvg;
     this->V /= this->params.initAvg;
-    this->U -= 0.5 * 1 / this->params.initAvg;
-    this->V -= 0.5 * 1 / this->params.initAvg;
-
-
+    this->U -= 0.5 * 1 / this->params.initAvg;;
+    this->V -= 0.5 * 1 / this->params.initAvg;;
 
     this->b_u = Col<double>(this->params.M, fill::zeros);
     this->alpha_u = Col<double>(this->params.M, fill::zeros);
@@ -244,6 +245,7 @@ void TimeSVD::train() {
     this->user_frequency();
     //this->t_u = Col<double>(this->params.M, fill::zeros);
     //this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
+    this->params.Y.reset();
 
     double prev_err = validErr();
     cout << "done" << endl;
