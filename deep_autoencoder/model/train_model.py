@@ -7,8 +7,8 @@ class ModelParams():
         self.l2_reg = l2_reg
         self.lambda_ = lambda_
         self.num_mov = num_movies
-        self.num_epochs = 20
-        self.learning_rate = 0.005
+        self.num_epochs = 50
+        self.learning_rate = 0.001
 
 class TrainModel(BaseModel):
 
@@ -18,97 +18,106 @@ class TrainModel(BaseModel):
 
         self._init_parameters()
 
-    def loss(self, inputs):
+    def loss(self, inputs, target):
         '''Compute the error on a forward pass, and return those predictions.'''
 
         # mask = tf.not_equal(inputs, 0.0)
         # non_zero_array = tf.boolean_mask(inputs, mask)
         # print(non_zero_array)
+        with tf.name_scope('loss'):
 
-        predictions = self.forward(inputs)
+            predictions = self.forward(inputs)
         # mask2 = tf.not_equal(predictions, 0.0)
         # non_zero_array2 = tf.boolean_mask(predictions, mask2)
         # print(non_zero_array2)
-        num_train_labels = tf.count_nonzero(inputs, dtype=tf.float32)
+            num_train_labels = tf.count_nonzero(inputs, dtype=tf.float32)
 
         # Sets outputs to 0 where corresponding inputs are 0
-        predictions = tf.where(tf.equal(inputs, 0.0), tf.zeros_like(predictions), predictions)
+            predictions = tf.where(tf.equal(inputs, 0.0), tf.zeros_like(predictions), predictions)
         #print(tf.count_nonzero(inputs))
+            loss = tf.scalar_mul((1.0/num_train_labels), tf.reduce_sum(tf.square(tf.subtract(predictions, target)), axis=0))
+            MSE = tf.reduce_sum(loss)
 
+        return loss, MSE
 
-        with tf.name_scope('loss'):
-            loss = tf.math.divide(tf.reduce_sum(tf.square(tf.subtract(predictions, inputs))), num_train_labels)
+    # def compute_loss(self, predictions, labels, num_labels):
+    #     with tf.name_scope('loss'):
+    #         loss_op = tf.math.divide(tf.reduce_sum(tf.square(tf.subtract(predictions, labels))), num_labels)
 
-        #print(loss)
-
-        if self.FLAGS.l2_reg==True:
-            l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()])
-            loss += self.FLAGS.lambda_ * l2_loss
-
-        return loss
-
-    def grad(self, inputs):
+    def grad(self, inputs, target):
         with tf.GradientTape() as tape:
-            loss_val = self.loss(inputs)
+            loss_val, MSE = self.loss(inputs, target)
 
-        return loss_val, tape.gradient(loss_val, self.get_variables())
+        gradient = tape.gradient(loss_val, self.get_variables())
+
+
+        #print(tf.shape(target)[0])
+        #print(gdiv)
+
+        return loss_val, gradient, MSE
+
+    # def optimizer(self, inputs):
+    #     predictions = self.forward(inputs)
+    #     num_train_labels = tf.count_nonzero(inputs, dtype=float32)
+    #     predictions = tf.where(tf.equal(inputs, 0.0), tf.zeros_like(predicitions), predictions)
+    #     loss = self.compute_loss(predictions, inputs, num_train_labels)
+    #
+    #     train_op = tf.train.MomentumOptimizer(self.FLAGS.learning_rate, 0.9).minimize(loss)
+    #     return train_op, loss
 
 
     def train(self, dataset, probe_set, train_for_preds):
+        print(self.FLAGS.learning_rate)
         optimizer = tf.train.MomentumOptimizer(self.FLAGS.learning_rate, 0.9)
         global_step = tf.Variable(0)
         batched_dataset = dataset.batch(128)
         iterator = batched_dataset.make_one_shot_iterator()
-        batch_count = 0
-        total_loss = tf.constant(0.)
+        total_movies = 460000
+
 
         for epoch in range(self.FLAGS.num_epochs):
-            prog_bar = tf.keras.utils.Progbar(460000)
+            tf.keras.backend.set_learning_phase(1)
+            batch_count = 0
+            print()
+            print("Epoch " + str(epoch + 1) + "/" + str(self.FLAGS.num_epochs))
+            prog_bar = tf.keras.utils.Progbar(460000, stateful_metrics=["val_rmse"])
 
             try:
                 while True:
                     batch = iterator.get_next()
                     batch_count += 1
-                    prog_bar.update(batch_count * 128)
-
-                    # if (batch_count % 100 == 0):
-                    #     print(batch_count)
-                    #     print(tf.math.divide(total_loss, 100))
-                    #     total_loss = tf.constant(0.)
-
-
+                    # if batch_count % 100 == 0:
+                    #     print(self.W_1)
+                    #     print(self.b1)
+                    #     print(self.b6)
 
                     dense_batch = tf.sparse.to_dense(batch)
 
-
                     # First forward pass
-                    predictions = self.forward_pred(dense_batch)
-                    loss, grads = self.grad(dense_batch)
+                    # predictions = self.forward(dense_batch)
+                    loss, grads, MSE = self.grad(dense_batch, dense_batch)
 
-                    total_loss = tf.add(total_loss, loss)
+
+                    prog_bar.update(128 * batch_count, values=[("train_loss", MSE)])
 
                     # First backward pass
-                    optimizer.apply_gradients(zip(grads, self.get_variables()))
+                    optimizer.apply_gradients(zip(grads, self.get_variables()), global_step)
                     # Second forward pass
-                    _, grads2 = self.grad(predictions)
+                    # _, grads2 = self.grad(predictions, predictions)
                     # Second backward pass
-                    optimizer.apply_gradients(zip(grads2, self.get_variables()))
-                    #self.model.save('model_1')
-                    #break
+                    # optimizer.apply_gradients(zip(grads2, self.get_variables()), global_step)
 
                     # End of epoch
+
             except tf.errors.OutOfRangeError:
                 ds = dataset.shuffle(460000)
                 batched_dataset = ds.batch(128)
                 iterator = batched_dataset.make_one_shot_iterator()
 
-        print("Done with training")
-        predictions, RMSE = self.pred_with_RMSE(probe_set, train_for_preds)
-        print(RMSE)
+
+            tf.keras.backend.set_learning_phase(0)
+            predictions, RMSE = self.pred_with_RMSE(probe_set, train_for_preds)
+            prog_bar.update(128 * batch_count, values=[("val_rmse", RMSE)])
 
         saver = tf.contrib.eager.Saver(self.get_variables())
         saver.save("modelmodel")
-
-            #train_preds, train_RMSE = self.pred_with_RMSE(train_for_preds, train_for_preds)
-            #print(train_RMSE)
-            #print(train_preds)
