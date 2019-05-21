@@ -61,8 +61,10 @@ void Data::fill_vector () {
 
         if (elem == 3) {
             this->cache.arr[lines_read].rating = stod(line.substr(start, end));
-
+        } else if (elem == 2) {
+            this->cache.arr[lines_read].date = stod(line.substr(start, end));
         }
+
         this->cache.size++;
         if (STREAM && lines_read > CHUNK) {
             break;
