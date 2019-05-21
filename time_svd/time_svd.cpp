@@ -53,8 +53,8 @@ double TimeSVD::grad_b_u(double del_common, double b_u) {
 double TimeSVD::grad_alpha_u(double del_common, int user, int time, double alpha_u) {
     double eta = 3.11 * pow(10, -6);
     double reg = 395 * pow(10, -2);
-    //double eta = 0.01 * pow(10, -3);
-    //double reg = 5000 * pow(10, -2);
+    // double eta = 0.01 * pow(10, -3);
+    // double reg = 5000 * pow(10, -2);
     return -eta * devUser(time, this->t_u[user - 1]) * del_common
            + eta * reg * alpha_u;
 }
