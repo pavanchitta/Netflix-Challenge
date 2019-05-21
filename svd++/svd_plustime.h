@@ -32,17 +32,14 @@ class Model {
     vector<vector<int>> N_u;
     Col<int> N_u_size;
     Mat<double> Y;
+    Mat<double> Y_norm;
 
     void user_date_avg();
     void user_frequency();
+    void movies_per_user();
 
-    Col<double> normalize_sum_y(int user);
-
-    void update_y_vectors(
-        int user,
-        double del_common,
-        Col<double>* Ui,
-        int e);
+    void compute_y_norm(int user);
+    void update_y_vectors(int user, Col<double>* Vj, int e);
 
     double devUser(
         int time,
@@ -128,7 +125,7 @@ class Model {
         string train_filename,
         string test_filename,
         string valid_filename,
-        double max_epochs = 20
+        double max_epochs = 10
      );
 
     vector<double> predict();

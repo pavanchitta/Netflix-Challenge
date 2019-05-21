@@ -16,7 +16,6 @@ void writeToFile(string filename, vector<double> preds) {
 }
 
 int main() {
-
     string train_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/train_probe.dta";
     string test_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/qual.dta";
     string valid_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/probe.dta";

@@ -1,4 +1,4 @@
-#include "svd_plus.h"
+#include "svd_plustime.h"
 #include <stdio.h>
 #include <assert.h>
 
@@ -29,51 +29,52 @@ double Model::grad_common(int user, int rating, double b_u, double alpha_u,
                           int time, double b_i, double b_bin, double b_u_tui, double c_u, double b_f_ui,
                           Col<double> *Ui, Col<double> *Vj, Col<double> *y_norm) {
 
-    return (rating - GLOBAL_BIAS - dot(*Ui, *Vj + *y_norm) - b_u
+    return (rating - GLOBAL_BIAS - dot(*Vj, *Ui + *y_norm) - b_u
             - alpha_u * this->devUser(time, this->t_u[user - 1])
             - (b_i + b_bin) * c_u - b_u_tui - b_f_ui);
 }
 
 void Model::grad_U(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
-    double eta = 0.008 * pow(0.9, e);
-    double reg = 0.0015;
+    double eta = 0.007;
+    double reg = 0.015;
     this->del_U = eta * ((reg * *Ui) - (*Vj) * del_common);
 }
 
 void Model::grad_V(double del_common, Col<double> *Ui, Col<double> *Vj, Col<double> *y_norm, int e) {
-    double eta = 0.008 * pow(0.9, e);
-    double reg = 0.0015;
+    double eta = 0.007;
+    double reg = 0.015;
     this->del_V = eta * ((reg * *Vj) - (*Ui + *y_norm)* del_common);
 }
 
 double Model::grad_b_u(double del_common, double b_u) {
-    double eta = 2.67 * pow(10, -3);
-    double reg = 2.55 * pow(10, -2);
+    double eta = 0.007;
+    double reg = 0.005;
     return -eta * del_common + eta * reg * b_u;
 }
 
 double Model::grad_alpha_u(double del_common, int user, int time, double alpha_u) {
     double eta = 3.11 * pow(10, -6);
     double reg = 395 * pow(10, -2);
+    //double reg = 0.015;
     return -eta * devUser(time, this->t_u[user - 1]) * del_common
            + eta * reg * alpha_u;
 }
 
 double Model::grad_b_u_tui(double del_common, double b_u_tui) {
-    double eta = 2.57 * pow(10, -3);
-    double reg = 0.231 * pow(10, -2);
+    double eta = 0.07;
+    double reg = 0.0005;
     return -eta * del_common + eta * reg * b_u_tui;
 }
 
 double Model::grad_b_i(double del_common, double b_i, double c_u) {
-    double eta = 0.488 * pow(10, -3);
-    double reg = 2.55 * pow(10, -2);
+    double eta = 0.07;
+    double reg = 0.005;
     return -eta * del_common * c_u + eta * reg * b_i;
 }
 
 double Model::grad_b_bin(double del_common, double b_bin, double c_u) {
-    double eta = 0.115 * pow(10, -3);
-    double reg = 9.29 * pow(10, -2);
+    double eta = 0.07;
+    double reg = 0.08;
     return -eta * del_common * c_u + eta * reg * b_bin;
 }
 
@@ -98,8 +99,6 @@ void Model::user_frequency() {
         int user = p.user;
         int time = p.date;
         int movie = p.movie;
-        this->N_u[user - 1].push_back(movie - 1);
-        this->N_u_size[user - 1] ++;
         this->f_ui(user - 1, time) += 1;
     }
     for (int user = 0; user < this->params.M; user ++) {
@@ -110,6 +109,7 @@ void Model::user_frequency() {
             }
         }
     }
+    this->params.Y.reset();
     cout << "Finished calculating user_frequency" << endl;
 }
 
@@ -127,6 +127,7 @@ void Model::user_date_avg() {
     for (int i = 0; i < this->params.M; i++) {
         this->t_u[i] /= num_ratings[i];
     }
+    this->params.Y.reset();
     cout << "Finished computing user_avg" << endl;
 }
 
@@ -140,10 +141,28 @@ double Model::devUser(int time, int user_avg) {
     }
 }
 
+// Also update N(u)
+void Model::movies_per_user() {
+
+    this->params.Y.reset();
+    while (this->params.Y.hasNext()) {
+        NetflixData p = this->params.Y.nextLine();
+        int user = p.user;
+        int movie = p.movie;
+        int rating = p.rating;
+        this->N_u[user - 1].push_back(movie);
+        this->N_u_size[user - 1] ++;
+        //this->Ratings(movie - 1, user - 1) = rating;
+    }
+    cout << "Finished calculating movies_per_user" << endl;
+    this->params.Y.reset();
+}
+
 double Model::trainErr() {
 
     int num_points = 0;
     double loss_err = 0.0;
+    Col<int> seen_user = Col<int>(this->params.M, fill::zeros);
 
     while (this->params.Y.hasNext()) {
 
@@ -154,8 +173,12 @@ double Model::trainErr() {
         int time = p.date;
         int bin = time / DAYS_PER_BIN;
         int freq = this->f_ui(user - 1, time);
+        if (seen_user[user - 1] == 0) {
+            this->compute_y_norm(user);
+            seen_user[user - 1] = 1;
+        }
 
-        loss_err += pow(rating - GLOBAL_BIAS - dot(U.col(user - 1), V.col(movie - 1) + normalize_sum_y(user))
+        loss_err += pow(rating - GLOBAL_BIAS - dot(V.col(movie - 1), U.col(user - 1) + this->Y_norm.col(user - 1))
                         - this->b_u[user - 1]
                         - (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1] -
                         this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
@@ -163,7 +186,6 @@ double Model::trainErr() {
 
         num_points++;
     }
-
     return loss_err / num_points;
 }
 
@@ -183,7 +205,7 @@ double Model::validErr() {
         int bin = time / DAYS_PER_BIN;
         int freq = this->f_ui(user - 1, time);
 
-        loss_err += pow(rating - GLOBAL_BIAS - dot(U.col(user - 1), V.col(movie - 1) + normalize_sum_y(user))
+        loss_err += pow(rating - GLOBAL_BIAS - dot(V.col(movie - 1), U.col(user - 1) + this->Y_norm.col(user - 1))
                         - this->b_u[user - 1]
                         - (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1] -
                         this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
@@ -211,7 +233,7 @@ vector<double> Model::predict() {
         Col<double> u = this->U.col(user - 1);
         Col<double> v = this->V.col(movie - 1);
 
-        double u_m_inter = dot(u, v + normalize_sum_y(user));
+        double u_m_inter = dot(v, u + this->Y_norm.col(user - 1));
         double u_bias = this->b_u[user] + this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
                         + this->b_u_tui(user - 1, time);
         double m_bias = (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1]
@@ -223,28 +245,33 @@ vector<double> Model::predict() {
     return preds;
 }
 
-Col<double> Model::normalize_sum_y(int user) {
+void Model::update_y_vectors(int user, Col<double>* Vj, int e) {
     vector<int> movies = this->N_u[user - 1];
     int size = this->N_u_size[user - 1];
-    assert (size = movies.size());
+    // double eta = 0.008 * pow(0.9, e);
+    // double reg = 0.0015;
+    double eta = 0.007;
+    double reg = 0.015;
     Col<double> sum = Col<double>(this->params.K, fill::zeros);
     for (int movie : movies) {
-        Col<double> y_j = this->Y.col(movie);
-        // cout << "y_j " << y_j << endl;
-        sum += y_j;
-        // cout << "sum " << sum << endl;
+        this->Y.col(movie - 1) += eta * (pow(size, -0.5) * *Vj - reg * this->Y.col(movie - 1));
+        sum += this->Y.col(movie - 1);
     }
-    return pow(size, -0.5) * sum;
+    this->Y_norm.col(user - 1) = pow(size, -0.5) * sum;
+
 }
 
-void Model::update_y_vectors(int user, double del_common, Col<double>* Ui, int e) {
-    vector<int> movies = this->N_u[user - 1];
+void Model::compute_y_norm(int user) {
+    vector<int> movies = this->N_u[user -1];
     int size = this->N_u_size[user - 1];
-    double eta = 0.008 * pow(0.9, e);
-    double reg = 0.0015;
+
+    assert (size > 0);
+    Col<double> sum = Col<double>(this->params.K, fill::zeros);
     for (int movie : movies) {
-        this->Y.col(movie) += eta * (del_common * pow(size, -0.5) * *Ui - reg * this->Y.col(movie));
+        sum += this->Y.col(movie - 1);
     }
+
+    this->Y_norm.col(user - 1) = pow(size, -0.5) * sum;
 }
 
 void Model::train() {
@@ -264,21 +291,24 @@ void Model::train() {
     this->del_U = Col<double>(this->params.K, fill::zeros);
     this->del_V = Col<double>(this->params.K, fill::zeros);
 
-    this->Y = Mat<double>(this->params.K, this->params.N, fill::randu);
+    this->Y = Mat<double>(this->params.K, this->params.N, fill::zeros);
+    this->Y_norm = Mat<double>(this->params.K, this->params.M, fill::zeros);
+
+    //this->Ratings = Mat<int>(this->params.N, this->params.M, fill::zeros);
     this->N_u = vector<vector<int>>(this->params.M);
     this->N_u_size = Col<int>(this->params.M, fill::zeros);
-    //this->user_date_avg();
-    this->user_frequency();
-    this->t_u = Col<double>(this->params.M, fill::zeros);
-    //this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
+
+    this->movies_per_user();
+    this->user_date_avg();
+    //this->user_frequency();
+    //this->t_u = Col<double>(this->params.M, fill::zeros);
+    this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
 
     this->U /= pow(10, 2);
     this->V /= pow(10, 2);
-    this->Y /= pow(10, 2);
 
-    this->U -= 0.5 * 1/(pow(10, 2));
-    this->V -= 0.5 * 1/(pow(10, 2));
-    this->Y -= 0.5 * 1/(pow(10, 2));
+    // this->U -= 0.5 * 1/(pow(10, 2));
+    // this->V -= 0.5 * 1/(pow(10, 2));
 
 
     double prev_err = validErr();
@@ -287,6 +317,10 @@ void Model::train() {
 
     for (int e = 0; e < this->params.max_epochs; e++) {
         cout << "Running Epoch " << e << endl;
+        Col<int> seen_user = Col<int>(this->params.M, fill::zeros);
+        int count;
+        Col<double> sum_v;
+        Col<double> y_norm;
         while (this->params.Y.hasNext()) {
 
             NetflixData p = this->params.Y.nextLine();
@@ -300,8 +334,15 @@ void Model::train() {
             Col<double> u = this->U.col(user - 1);
             Col<double> v = this->V.col(movie - 1);
 
+
             // Get the SVD++ specific variables
-            Col<double> y_norm = normalize_sum_y(user);
+            if (seen_user[user - 1] == 0) {
+                sum_v = Col<double>(this->params.K, fill::zeros);
+                count = 1;
+                this->compute_y_norm(user);
+                y_norm = this->Y_norm.col(user - 1);
+                seen_user[user - 1] = 1;
+            }
 
             double del_common = this->grad_common(user, rating, this->b_u[user - 1],
                     this->alpha_u[user - 1], time, this->b_i[movie - 1],
@@ -310,47 +351,51 @@ void Model::train() {
                     &u, &v, &y_norm);
 
             double del_b_u = this->grad_b_u(del_common, this->b_u[user - 1]);
-            double del_alpha_u = this->grad_alpha_u(del_common, user, time, this->alpha_u[user - 1]);
-            double del_b_u_tui = this->grad_b_u_tui(del_common, this->b_u_tui(user - 1, time));
+            //double del_alpha_u = this->grad_alpha_u(del_common, user, time, this->alpha_u[user - 1]);
+            //double del_b_u_tui = this->grad_b_u_tui(del_common, this->b_u_tui(user - 1, time));
 
             double del_b_i = this->grad_b_i(del_common, this->b_i[movie - 1], this->c_u[user - 1]);
-            double del_b_bin = this->grad_b_bin(del_common, this->b_bin(movie - 1, bin), this->c_u[user - 1]);
+            //double del_b_bin = this->grad_b_bin(del_common, this->b_bin(movie - 1, bin), this->c_u[user - 1]);
             double del_c_u = this->grad_c_u(del_common, this->c_u[user - 1], this->b_i[movie - 1], this->b_bin(movie - 1, bin));
-            double del_b_f_ui = this->grad_b_f_ui(del_common, this->b_f_ui(movie - 1, freq));
+            //double del_b_f_ui = this->grad_b_f_ui(del_common, this->b_f_ui(movie - 1, freq));
 
             this->grad_U(del_common, &u, &v, e);
             this->grad_V(del_common, &u, &v, &y_norm, e);
 
             this->b_u[user - 1] -= del_b_u;
-            this->alpha_u[user - 1] -= del_alpha_u;
-            this->b_u_tui(user - 1, time) -= del_b_u_tui;
+            //this->alpha_u[user - 1] -= del_alpha_u;
+            //this->b_u_tui(user - 1, time) -= del_b_u_tui;
 
             this->b_i[movie - 1] -= del_b_i;
-            this->b_bin(movie - 1, bin) -= del_b_bin;
+            //this->b_bin(movie - 1, bin) -= del_b_bin;
             this->c_u[user - 1] -= del_c_u;
-            this->b_f_ui(movie - 1, freq) -= del_b_f_ui;
+            //this->b_f_ui(movie - 1, freq) -= del_b_f_ui;
 
             this->U.col(user - 1) -= this->del_U;
             this->V.col(movie - 1) -= this->del_V;
+            sum_v += v * del_common;
 
-            update_y_vectors(user, del_common, &u, e);
+            if (count == this->N_u_size[user - 1]) {
+                update_y_vectors(user, &sum_v, e);
+            }
+
 
         }
 
         this->params.Y.reset();
-        // cout << "Train Error " << trainErr() << endl;
-        // this->params.Y.reset();
-        //
-        // this->params.Y_valid.reset();
-        // curr_err = validErr();
-        // cout << "Probe Error " << curr_err << endl;
-        // this->params.Y_valid.reset();
-        //
-        // // Early stopping
-        // if (prev_err < curr_err) {
-        //     cout << "Early stopping" << endl;
-        //     break;
-        // }
+        cout << "Train Error " << trainErr() << endl;
+        this->params.Y.reset();
+
+        this->params.Y_valid.reset();
+        curr_err = validErr();
+        cout << "Probe Error " << curr_err << endl;
+        this->params.Y_valid.reset();
+
+        // Early stopping
+        if (prev_err < curr_err) {
+            cout << "Early stopping" << endl;
+            break;
+        }
 
         prev_err = curr_err;
 
