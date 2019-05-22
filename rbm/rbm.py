@@ -15,7 +15,7 @@ class RBM:
         self.k = k
         self.num_rat = 5
 
-        self.lr = 0.01
+        self.lr = 0.0005
         # if momentum:
         #     self.momentum = tf.placeholder(tf.float32)
         # else:
@@ -73,7 +73,7 @@ class RBM:
 
     def CD_k(self, visibles, mask):
         '''Contrastive divergence with k steps of Gibbs Sampling.'''
-        orig_hidden = self.sample_h_given_v(visibles)
+        orig_hidden = self.sample_h_given_v(visibles, False)
         # k steps of alternating parallel updates
         for i in range(self.k):
             if i == 0:
@@ -82,7 +82,7 @@ class RBM:
             if i == self.k - 1:
                 hidden_samples = self.sample_h_given_v(visible_samples, binary=False)
             else:
-                hidden_samples = self.sample_h_given_v(visible_samples, binary=True)
+                hidden_samples = self.sample_h_given_v(visible_samples, binary=False)
 
 
         w_grad_pos = tf.einsum('ai,ajm->mji', orig_hidden, visibles)
@@ -139,10 +139,13 @@ class RBM:
         # Computation graph definition
         batched_dataset = dataset.batch(self.batch_size)
         iterator = batched_dataset.make_one_shot_iterator()
-        optimizer = tf.contrib.opt.MomentumWOptimizer(self.weight_decay, self.lr, self.momentum)
+        optimizer = tf.train.MomentumOptimizer(self.lr, self.momentum)
         # Main training loop, needs adjustments depending on how training data is handled
         #print(self.visible_bias)
         for epoch in range(epochs):
+            if epoch == 42:
+                self.k = 3
+
             num_pts = 0
 
             print()

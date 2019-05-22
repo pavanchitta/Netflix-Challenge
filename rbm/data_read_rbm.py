@@ -52,16 +52,16 @@ probe = probe.map(_test_parse_function)
 # print(a)
 
 rbm = RBM(17770, 100, 1, 100, 0, 0.9)
-# rbm.train(dataset, 20, probe, train_4_probe)
+rbm.train(dataset, 75, probe, train_4_probe)
 
 ########### Submission ###############
 
-saver = tf.contrib.eager.Saver(rbm.get_variables())
-saver.restore("rbm")
+# saver = tf.contrib.eager.Saver(rbm.get_variables())
+# saver.restore("rbm_60")
 
 # print("Predicting")
 # test_set = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/qual_edited.dta")
 # test_set = test_set.map(_test_parse_function)
 # rbm.pred_for_sub(test_set, dataset)
 # print("Created submission for test set")
-rbm.pred_for_sub(full_train, full_train, True, "rbm_train.txt") 
+# rbm.pred_for_sub(full_train, full_train, True, "rbm_train.txt") 
