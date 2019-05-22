@@ -36,17 +36,32 @@ def _test_parse_function(array):
 dset = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/train_4_qual_edited.dta")
 train_4_probe = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/train_4_pred_edited.dta")
 probe = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/probe_edited.dta")
-#test_set = tf.data.TextLineDataset("/Users/vigneshv/code/CS156b-Netflix/data/probe.dta")
+full_train = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/data/train.tf.dta")
+
+# test_set = tf.data.TextLineDataset("/home/CS156b-Netflix/data/probe.dta")
 
 dataset = dset.map(_user_parse_function)
 train_4_probe = train_4_probe.map(_user_parse_function)
+full_train = full_train.map(_user_parse_function)
 probe = probe.map(_test_parse_function)
 #test_set = test_set.map(_test_parse_function)
 
 #user_index_dataset = dset.map(_user_parse_function)
 
-#a = model.predict(test_set, user_index_dataset)
-#print(a)
+# a = model.predict(test_set, user_index_dataset)
+# print(a)
 
 rbm = RBM(17770, 100, 1, 100, 0, 0.9)
-rbm.train(dataset, 0, probe, train_4_probe)
+# rbm.train(dataset, 20, probe, train_4_probe)
+
+########### Submission ###############
+
+saver = tf.contrib.eager.Saver(rbm.get_variables())
+saver.restore("rbm")
+
+# print("Predicting")
+# test_set = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/qual_edited.dta")
+# test_set = test_set.map(_test_parse_function)
+# rbm.pred_for_sub(test_set, dataset)
+# print("Created submission for test set")
+rbm.pred_for_sub(full_train, full_train, True, "rbm_train.txt") 
