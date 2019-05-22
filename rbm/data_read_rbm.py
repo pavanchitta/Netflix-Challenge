@@ -33,10 +33,9 @@ def _test_parse_function(array):
 
     return tf.SparseTensor(indices=indices, values=values, dense_shape=dense_shape)
 
-dset = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/train_4_qual_edited.dta")
-train_4_probe = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/train_4_pred_edited.dta")
-probe = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/probe_edited.dta")
-
+dset = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/train_4_qual_edited.dta")
+train_4_probe = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/train_4_pred_edited.dta")
+probe = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/probe_edited.dta")
 #test_set = tf.data.TextLineDataset("/Users/vigneshv/code/CS156b-Netflix/data/probe.dta")
 
 dataset = dset.map(_user_parse_function)
@@ -49,5 +48,5 @@ probe = probe.map(_test_parse_function)
 #a = model.predict(test_set, user_index_dataset)
 #print(a)
 
-rbm = RBM(17770, 20, 3, 128, 0.001, 0.9)
-rbm.train(dataset, 5, probe, train_4_probe)
+rbm = RBM(17770, 100, 1, 100, 0, 0.9)
+rbm.train(dataset, 0, probe, train_4_probe)
