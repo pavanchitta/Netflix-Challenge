@@ -7,8 +7,16 @@
 #define MAX_DATE 2300
 #define MAX_FREQ 5
 
-BaselinePredictor::BaselinePredictor(int M, int N, string filename, double eps, double max_epochs):
-params( { M, N, Data(filename), eps, max_epochs } ) {
+BaselinePredictor::BaselinePredictor(
+            int M,
+            int N,
+            string train_filename,
+            string test_filename,
+            string valid_filename,
+            double eps,
+            double max_epochs
+    ) : params( { M, N, Data(train_filename), Data(test_filename), Data(valid_filename), eps, max_epochs}){
+
 }
 
 BaselinePredictor::~BaselinePredictor() {}
@@ -28,10 +36,10 @@ double BaselinePredictor::grad_b_u(double del_common, double b_u) {
 }
 
 double BaselinePredictor::grad_alpha_u(double del_common, int user, int time, double alpha_u) {
-    // double eta = 3.11 * pow(10, -6);
-    // double reg = 395 * pow(10, -2);
-    double eta = 0.01 * pow(10, -3);
-    double reg = 5000 * pow(10, -2);
+    double eta = 3.11 * pow(10, -6);
+    double reg = 395 * pow(10, -2);
+    //double eta = 0.01 * pow(10, -3);
+    //double reg = 5000 * pow(10, -2);
     // return -2 * eta * devUser(time, this->t_u[user - 1]) * del_common
     //        + eta * reg * 2 * alpha_u;
     return -eta * devUser(time, this->t_u[user - 1]) * del_common
@@ -85,7 +93,14 @@ void BaselinePredictor::user_frequency() {
         int time = p.date;
         this->f_ui(user - 1, time) += 1;
     }
-    this->f_ui = floor(log(this->f_ui)/log(6.76));
+    for (int user = 0; user < this->params.M; user ++) {
+        for (int time = 0; time < MAX_DATE; time ++) {
+            int freq = this->f_ui(user, time);
+            if (freq != 0) {
+                this->f_ui(user, time) = floor(log(freq)/log(6.76));
+            }
+        }
+    }
     cout << "Finished calculating user_frequency" << endl;
 }
 
@@ -103,6 +118,7 @@ void BaselinePredictor::user_date_avg() {
     for (int i = 0; i < this->params.M; i++) {
         this->t_u[i] /= num_ratings[i];
     }
+    cout << "Finished computing user_avg" << endl;
 }
 
 double BaselinePredictor::devUser(int time, int user_avg) {
@@ -137,6 +153,57 @@ double BaselinePredictor::trainErr() {
     return loss_err/num_points;
 }
 
+double BaselinePredictor::validErr() {
+
+    int num_points = 0;
+    double loss_err = 0.0;
+
+    this->params.Y_valid.reset();
+    while (this->params.Y_valid.hasNext()) {
+
+        NetflixData p = this->params.Y_valid.nextLine();
+        int user = p.user;
+        int movie = p.movie;
+        int rating = p.rating;
+        int time = p.date;
+        int bin = time / DAYS_PER_BIN;
+        int freq = this->f_ui(user - 1, time);
+
+        loss_err += pow(rating - GLOBAL_BIAS - this->b_u[user - 1]
+                        - (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1] -
+                        this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
+                        - this->b_u_tui(user - 1, time) - this->b_f_ui(movie - 1, freq), 2);
+
+        num_points++;
+    }
+
+    return loss_err / num_points;
+}
+
+vector<double> BaselinePredictor::predict() {
+
+    vector<double> preds;
+
+    while (this->params.Y_test.hasNext()) {
+
+        NetflixData p = this->params.Y_test.nextLine();
+        int user = p.user;
+        int movie = p.movie;
+        int time = p.date;
+        int bin = time / DAYS_PER_BIN;
+        int freq = this->f_ui(user - 1, time);
+
+        double u_bias = this->b_u[user - 1] + this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
+                        + this->b_u_tui(user - 1, time);
+        double m_bias = (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1]
+                        + this->b_f_ui(movie - 1, freq);
+        double pred = GLOBAL_BIAS + u_bias + m_bias;
+
+        preds.push_back(pred);
+    }
+    return preds;
+}
+
 void BaselinePredictor::train() {
 
     // Intialize matrices for user and movie biases.
@@ -159,10 +226,16 @@ void BaselinePredictor::train() {
 
     this->user_date_avg();
     this->user_frequency();
+    this->params.Y.reset();
     //this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
 
     //this->t_u = Col<double>(this->params.M, fill::zeros);
     cout << "finished getting user_avg" << endl;
+
+    double prev_err = validErr();
+    cout << "done" << endl;
+    double curr_err = 0.0;
+
     for (int e = 0; e < this->params.max_epochs; e++) {
         cout << "Running Epoch " << e << endl;
         this->params.Y.reset();
@@ -198,7 +271,22 @@ void BaselinePredictor::train() {
             this->b_f_ui(movie - 1, freq) -= del_b_f_ui;
 
         }
-        cout << "Error " << trainErr() << endl;
+
         this->params.Y.reset();
+        cout << "Train Error " << trainErr() << endl;
+        this->params.Y.reset();
+
+        this->params.Y_valid.reset();
+        curr_err = validErr();
+        cout << "Probe Error " << curr_err << endl;
+        this->params.Y_valid.reset();
+
+        // Early stopping
+        if (prev_err < curr_err) {
+            cout << "Early stopping" << endl;
+            break;
+        }
+
+        prev_err = curr_err;
     }
 }
