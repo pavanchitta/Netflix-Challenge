@@ -176,7 +176,42 @@ class RBM:
         saver = tf.contrib.eager.Saver(self.get_variables())
         saver.save("rbm")
 
+    def pred_for_sub(self, test_set, pred_set, submit=True, filename="rbm.txt"):
+        test_set = test_set.repeat(1)
+        test_set = test_set.batch(self.batch_size)
+        test_iterator = test_set.make_one_shot_iterator()
+        pred_set = pred_set.batch(self.batch_size)
+        pred_iterator = pred_set.make_one_shot_iterator()
 
+        training_point = pred_iterator.get_next()
+        x = tf.sparse.to_dense(training_point, default_value = -1)
+        x_hot = tf.one_hot(x, self.num_rat, axis=1)
+        batch_count = 0
+        curr_preds = self.forward(x_hot, False)
+
+
+        batch_count = 0
+        total_predictions = []
+        actual = []
+        try:
+            while True:
+                row_batch = test_iterator.get_next()
+                test_preds = tf.gather_nd(curr_preds, row_batch.indices)
+
+                total_predictions = tf.concat([total_predictions, test_preds], 0)
+                training_point = pred_iterator.get_next()
+                x = tf.sparse.to_dense(training_point, default_value = -1)
+                x_hot = tf.one_hot(x, self.num_rat, axis=1)
+                curr_preds = self.forward(x_hot, False)
+
+        except tf.errors.OutOfRangeError:
+            pass
+
+        if submit:
+            submission = total_predictions.numpy()
+            np.savetxt(filename, submission, delimiter="\n")
+
+        return total_predictions
 
     def pred_with_RMSE(self, test_set, pred_set):
         test_set = test_set.repeat(1)
