@@ -23,14 +23,17 @@ class Model {
     Col<double> del_U;
     Col<double> del_V;
     Col<double> del_alpha_uk;
+    //Col<double> del_p_u_kt;
     Col<double> b_i;
     Col<double> b_u;
     Mat<double> b_bin;
+    Col<double> c_u;
     Mat<double> b_u_tui;
     Mat<double> f_ui;
     Mat<double> b_f_ui;
     Col<double> t_u;
     Mat<double> alpha_uk;
+    //Cube<double> p_u_kt;
     Col<double> alpha_u;
     vector<vector<int>> N_u;
     Col<int> N_u_size;
@@ -67,6 +70,7 @@ class Model {
         int e
         );
 
+
     void grad_V(
         double del_common,
         Col<double> *Ui,
@@ -85,6 +89,8 @@ class Model {
         double b_u_tui,
         double b_f_ui,
         double alpha_u,
+        double c_u,
+        //Col<double> *p_u_kt,
         Col<double> *dev_alpha_uk,
         Col<double> *Ui,
         Col<double> *Vj,
@@ -98,6 +104,13 @@ class Model {
         Col<double>* alpha_uk,
         Col<double>* Vj,
         int e);
+
+    // void grad_p_u_kt(
+    //     double del_common,
+    //     Col<double> *p_u_kt,
+    //     Col<double> *Vj,
+    //     int e
+    // );
 
     double grad_alpha_u(
         double del_common,
@@ -116,6 +129,13 @@ class Model {
         double b_f_ui, int e
     );
 
+    double grad_c_u(
+        double del_common,
+        double c_u,
+        double b_i,
+        double b_bin
+    );
+
     double grad_b_u(
         double del_common,
         double b_u, int e);
@@ -123,12 +143,12 @@ class Model {
 
     double grad_b_i(
         double del_common,
-        double b_i, int e
+        double b_i, double c_u, int e
     );
 
     double grad_b_bin(
         double del_common,
-        double b_bin,
+        double b_bin, double c_u,
         int e
     );
 
@@ -144,7 +164,7 @@ class Model {
         string train_filename,
         string test_filename,
         string valid_filename,
-        double max_epochs = 18
+        double max_epochs = 30
      );
 
     vector<double> predict();
