@@ -51,7 +51,7 @@ probe = probe.map(_test_parse_function)
 # a = model.predict(test_set, user_index_dataset)
 # print(a)
 
-rbm = RBM(17770, 100, 1, 100, 0, 0.9)
+rbm = RBM()
 rbm.train(dataset, 75, probe, train_4_probe)
 
 ########### Submission ###############
@@ -64,4 +64,4 @@ rbm.train(dataset, 75, probe, train_4_probe)
 # test_set = test_set.map(_test_parse_function)
 # rbm.pred_for_sub(test_set, dataset)
 # print("Created submission for test set")
-# rbm.pred_for_sub(full_train, full_train, True, "rbm_train.txt") 
+# rbm.pred_for_sub(full_train, full_train, True, "rbm_train.txt")

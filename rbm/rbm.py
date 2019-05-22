@@ -5,17 +5,28 @@ from tensorflow import contrib
 tfe = tf.contrib.eager
 
 class RBM:
-    def __init__(self, n_visible, n_hidden, k, batch_size, weight_decay, momentum):
-        self.n_visible = n_visible
-        self.batch_size = batch_size
-        self.n_hidden = n_hidden
-        self.momentum = momentum
-        self.weight_decay = weight_decay
-        # k is number of iterations of Gibbs sampling for CD_k
-        self.k = k
+    def __init__(self):
+        self.n_visible = 17770
+        self.batch_size = 100
+        self.n_hidden = 100
+        self.momentum = 0.9
+        self.weight_decay = 0.0
+        self.k = 1
         self.num_rat = 5
+        self.lr_weights = 0.0005
+        self.lr_vb = 0.0005
+        self.lr_hb = 0.0005
 
-        self.lr = 0.0005
+        self.weight_v = 0.0
+        self.visible_bias_v = 0.0
+        self.hidden_bias_v = 0.0
+        self.anneal = False
+        self.anneal_val = 0.0
+
+
+
+
+
         # if momentum:
         #     self.momentum = tf.placeholder(tf.float32)
         # else:
@@ -28,7 +39,7 @@ class RBM:
 
 
         arr = np.loadtxt("movie_frequencies.dta")
-                
+
         visible_bias = tf.to_float(tf.transpose(tf.constant(arr)))
         self.hidden_bias = tfe.Variable(tf.constant(0.0, shape=[n_hidden]), name='h_bias')
         self.visible_bias = tfe.Variable(visible_bias, name='v_bias')
@@ -134,15 +145,44 @@ class RBM:
     def get_variables(self):
         return [self.hidden_bias, self.visible_bias, self.weights]
 
+    def apply_gradients(self, grads):
+        weight_update = tf.add(tf.scalar_mul(self.lr_weights, grads[0]), tf.scalar_mul(self.momentum, self.weight_v))
+        weight_update -= tf.scalar_mul(self.weights, self.weight_decay)
+        self.weights_v = weight_update
+        self.weights = tf.subtract(self.weights, weight_update)
+
+        hb_update = tf.add(tf.scalar_mul(self.lr_hb, grads[1]), tf.scalar_mul(self.momentum, self.hidden_bias_v))
+        hb_update -= tf.scalar_mul(self.hidden_bias, self.weight_decay)
+
+        self.hidden_bias_v = hb_update
+        self.hidden_bias = tf.subtract(self.hidden_bias, hb_update)
+
+        vb_update = tf.add(tf.scalar_mul(self.lr_vb, grads[2]), tf.scalar_mul(self.momentum, self.visible_bias_v))
+        vb_update -= tf.scalar_mul(self.visible_bias, self.weight_decay)
+
+        self.visible_bias_v = vb_update
+        self.visible_bias = tf.subtract(self.visible_bias, vb_update)
+
+
+
+
+
+
+
 
     def train(self, dataset, epochs, probe_set, probe_train):
         # Computation graph definition
         batched_dataset = dataset.batch(self.batch_size)
         iterator = batched_dataset.make_one_shot_iterator()
-        optimizer = tf.train.MomentumOptimizer(self.lr, self.momentum)
         # Main training loop, needs adjustments depending on how training data is handled
         #print(self.visible_bias)
         for epoch in range(epochs):
+            if self.anneal:
+                self.lr_weights = self.lr_weights / (1 + epoch / self.anneal_val)
+                self.lr_vb = self.lr_vb / (1 + epoch / self.anneal_val)
+                self.lr_hb = self.lr_hb / (1 + epoch / self.anneal_val)
+
+
             if epoch == 42:
                 self.k = 3
 
@@ -159,9 +199,9 @@ class RBM:
 
                     x_hot = tf.one_hot(x, self.num_rat, axis=1)
                     grads = self.learn(x_hot)
-                    optimizer.apply_gradients(zip(grads, [self.weights, self.hidden_bias, self.visible_bias]))
+                    self.apply_gradients(grads)
                     num_pts += 1
-                    train_rmse = tf.sqrt( tf.scalar_mul(1 / tf.to_float(tf.count_nonzero(tf.add(x, 1))), 
+                    train_rmse = tf.sqrt( tf.scalar_mul(1 / tf.to_float(tf.count_nonzero(tf.add(x, 1))),
                         tf.reduce_sum(tf.square(tf.subtract(self.forward(x_hot), tf.to_float(tf.add(x, 1)))))))
                     prog_bar.update(self.batch_size * num_pts, [("train_rmse", train_rmse)])
             except tf.errors.OutOfRangeError:
