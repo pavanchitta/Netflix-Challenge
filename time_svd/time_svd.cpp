@@ -13,12 +13,13 @@ TimeSVD::TimeSVD(
             int M,
             int N,
             int K,
+            string all_filename,
             string train_filename,
             string test_filename,
             string valid_filename,
             double max_epochs,
             double initAvg
-    ) : params( { M, N, K, Data(train_filename), Data(test_filename), Data(valid_filename), max_epochs, initAvg}){
+    ) : params( { M, N, K, Data(all_filename), Data(train_filename), Data(test_filename), Data(valid_filename), max_epochs, initAvg}){
 
 }
 
@@ -91,9 +92,9 @@ double TimeSVD::grad_b_f_ui(double del_common, double b_f_ui) {
 
 void TimeSVD::user_frequency() {
     this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
-    this->params.Y.reset();
-    while (this->params.Y.hasNext()) {
-        NetflixData p = this->params.Y.nextLine();
+    this->params.Y_all.reset();
+    while (this->params.Y_all.hasNext()) {
+        NetflixData p = this->params.Y_all.nextLine();
         int user = p.user;
         int time = p.date;
         this->f_ui(user - 1, time) += 1;
@@ -112,9 +113,9 @@ void TimeSVD::user_frequency() {
 void TimeSVD::user_date_avg() {
     this->t_u = Col<double>(this->params.M, fill::zeros);
     Col<double> num_ratings = Col<double>(this->params.M, fill::zeros);
-    this->params.Y.reset();
-    while (this->params.Y.hasNext()) {
-        NetflixData p = this->params.Y.nextLine();
+    this->params.Y_all.reset();
+    while (this->params.Y_all.hasNext()) {
+        NetflixData p = this->params.Y_all.nextLine();
         int user = p.user;
         int time = p.date;
         this->t_u[user - 1] += time;
