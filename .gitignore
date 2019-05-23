@@ -6,3 +6,5 @@ out/
 preds/
 __pycache__/
 to_fix/
+best_preds.txt
+model_coefs.txt
