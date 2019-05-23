@@ -52,7 +52,7 @@ probe = probe.map(_test_parse_function)
 # print(a)
 
 rbm = RBM()
-rbm.train(dataset, 75, probe, train_4_probe)
+rbm.train(dataset, 30, probe, train_4_probe)
 
 ########### Submission ###############
 
