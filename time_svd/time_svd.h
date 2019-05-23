@@ -10,6 +10,7 @@ typedef struct {
     int M;
     int N;
     int K;
+    Data Y_all;
     Data Y;
     Data Y_test;
     Data Y_valid;
@@ -116,6 +117,7 @@ class TimeSVD {
         int M,
         int N,
         int K,
+        string all_filename,
         string train_filename,
         string test_filename,
         string valid_filename,

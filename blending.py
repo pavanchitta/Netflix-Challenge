@@ -29,6 +29,10 @@ for filename in os.listdir(os.getcwd() + '/preds'):
 
 preds = np.column_stack(preds)
 coefs, blended_preds = quiz_blend(preds, rmses)
-model_coefs = np.column_stack((coefs, models))
+coefs = np.around(coefs, decimals=4)
+abs_coefs = abs(coefs)
+model_coefs = np.column_stack((abs_coefs, coefs, models))
+model_coefs = model_coefs[model_coefs[:, 0].argsort()[::-1]]
+model_coefs = model_coefs[:, 1:3]
 np.savetxt('blended_preds.txt', blended_preds, fmt='%.5f')
 np.savetxt('model_coefs.txt', model_coefs, delimiter=" ", fmt="%s")

@@ -5,4 +5,6 @@ bin/
 out/
 preds/
 __pycache__/
-old_preds/
+to_fix/
+best_preds.txt
+model_coefs.txt
