@@ -26,62 +26,83 @@ TimeSVD::TimeSVD(
 TimeSVD::~TimeSVD() {}
 
 double TimeSVD::grad_common(int user, int rating, double b_u, double alpha_u,
-                          int time, double b_i, double b_bin, double b_u_tui, double c_u, double b_f_ui,
+                          int time, double b_i, double b_bin, double b_u_tui, double c_u,
+                          double c_u_t, double b_f_ui,
                           Col<double> *Ui, Col<double> *Vj) {
     return (rating - GLOBAL_BIAS - dot(*Ui, *Vj) - b_u
             - alpha_u * this->devUser(time, this->t_u[user - 1])
-            - (b_i + b_bin) * c_u - b_u_tui - b_f_ui);
+            - (b_i + b_bin) * (c_u + c_u_t) - b_u_tui - b_f_ui);
 }
 
 void TimeSVD::grad_U(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
-    double eta = 0.007;// * pow(0.9, e);
-    double reg = 0.01;
+    // double eta = 0.007 * pow(0.9, e);
+    // double reg = 0.01;
+    double eta = 0.007 * pow(0.9, e);
+    double reg = 0.015;
     this->del_U = eta * ((reg * *Ui) - (*Vj) * del_common);
 }
 
 void TimeSVD::grad_V(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
-    double eta = 0.007;// * pow(0.9, e);
-    double reg = 0.01;
+    // double eta = 0.007 * pow(0.9, e);
+    // double reg = 0.01;
+    double eta = 0.007 * pow(0.9, e);
+    double reg = 0.015;
     this->del_V = eta * ((reg * *Vj) - *Ui * del_common);
 }
 
 double TimeSVD::grad_b_u(double del_common, double b_u) {
-    double eta = 2.67 * pow(10, -3);
-    double reg = 2.55 * pow(10, -2);
+    // double eta = 2.67 * pow(10, -3);
+    // double reg = 2.55 * pow(10, -2);
+    double eta = 0.007;
+    double reg = 0.005;
     return -eta * del_common + eta * reg * b_u;
 }
 
 double TimeSVD::grad_alpha_u(double del_common, int user, int time, double alpha_u) {
-    double eta = 3.11 * pow(10, -6);
-    double reg = 395 * pow(10, -2);
+    // double eta = 3.11 * pow(10, -6);
+    // double reg = 395 * pow(10, -2);
     // double eta = 0.01 * pow(10, -3);
     // double reg = 5000 * pow(10, -2);
+    double eta = 0.00001;
+    double reg = 12;
     return -eta * devUser(time, this->t_u[user - 1]) * del_common
            + eta * reg * alpha_u;
 }
 
 double TimeSVD::grad_b_u_tui(double del_common, double b_u_tui) {
-    double eta = 2.57 * pow(10, -3);
-    double reg = 0.231 * pow(10, -2);
+    // double eta = 2.57 * pow(10, -3);
+    // double reg = 0.231 * pow(10, -2);
+    double eta = 0.007;
+    double reg = 0.005;
     return -eta * del_common + eta * reg * b_u_tui;
 }
 
-double TimeSVD::grad_b_i(double del_common, double b_i, double c_u) {
-    double eta = 0.488 * pow(10, -3);
-    double reg = 2.55 * pow(10, -2);
-    return -eta * del_common * c_u + eta * reg * b_i;
+double TimeSVD::grad_b_i(double del_common, double b_i, double c_u, double c_u_t) {
+    // double eta = 0.488 * pow(10, -3);
+    // double reg = 2.55 * pow(10, -2);
+    double eta = 0.007;
+    double reg = 0.005;
+    return -eta * del_common * (c_u + c_u_t) + eta * reg * b_i;
 }
 
-double TimeSVD::grad_b_bin(double del_common, double b_bin, double c_u) {
-    double eta = 0.115 * pow(10, -3);
-    double reg = 9.29 * pow(10, -2);
-    return -eta * del_common * c_u + eta * reg * b_bin;
+double TimeSVD::grad_b_bin(double del_common, double b_bin, double c_u, double c_u_t) {
+    // double eta = 0.115 * pow(10, -3);
+    // double reg = 9.29 * pow(10, -2);
+    double eta = 0.007;
+    double reg = 0.08;
+    return -eta * del_common * (c_u + c_u_t) + eta * reg * b_bin;
 }
 
 double TimeSVD::grad_c_u(double del_common, double c_u, double b_i, double b_bin) {
     double eta = 5.64 * pow(10, -3);
     double reg = 4.76 * pow(10, -2);
     return -eta * del_common * (b_i + b_bin) + eta * reg * (c_u - 1);
+}
+
+double TimeSVD::grad_c_u_t(double del_common, double c_u_t, double b_i, double b_bin) {
+    double eta = 1.03 * pow(10, -3);
+    double reg = 1.90 * pow(10, -2);
+    return -eta * del_common * (b_i + b_bin) + eta * reg * (c_u_t);
 }
 
 double TimeSVD::grad_b_f_ui(double del_common, double b_f_ui) {
@@ -92,9 +113,9 @@ double TimeSVD::grad_b_f_ui(double del_common, double b_f_ui) {
 
 void TimeSVD::user_frequency() {
     this->f_ui = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
-    this->params.Y_all.reset();
-    while (this->params.Y_all.hasNext()) {
-        NetflixData p = this->params.Y_all.nextLine();
+    this->params.Y.reset();
+    while (this->params.Y.hasNext()) {
+        NetflixData p = this->params.Y.nextLine();
         int user = p.user;
         int time = p.date;
         this->f_ui(user - 1, time) += 1;
@@ -113,9 +134,9 @@ void TimeSVD::user_frequency() {
 void TimeSVD::user_date_avg() {
     this->t_u = Col<double>(this->params.M, fill::zeros);
     Col<double> num_ratings = Col<double>(this->params.M, fill::zeros);
-    this->params.Y_all.reset();
-    while (this->params.Y_all.hasNext()) {
-        NetflixData p = this->params.Y_all.nextLine();
+    this->params.Y.reset();
+    while (this->params.Y.hasNext()) {
+        NetflixData p = this->params.Y.nextLine();
         int user = p.user;
         int time = p.date;
         this->t_u[user - 1] += time;
@@ -153,7 +174,7 @@ double TimeSVD::trainErr() {
         int freq = this->f_ui(user - 1, time);
 
         loss_err += pow(rating - GLOBAL_BIAS - dot(U.col(user - 1), V.col(movie - 1)) - this->b_u[user - 1]
-                        - (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1] -
+                        - (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * (this->c_u[user - 1] + this->c_u_t(user - 1, time)) -
                         this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
                         - this->b_u_tui(user - 1, time) - this->b_f_ui(movie - 1, freq), 2);
 
@@ -180,7 +201,7 @@ double TimeSVD::validErr() {
         int freq = this->f_ui(user - 1, time);
 
         loss_err += pow(rating - GLOBAL_BIAS - dot(U.col(user - 1), V.col(movie - 1)) - this->b_u[user - 1]
-                        - (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1] -
+                        - (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * (this->c_u[user - 1] + this->c_u_t(user - 1, time)) -
                         this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
                         - this->b_u_tui(user - 1, time) - this->b_f_ui(movie - 1, freq), 2);
 
@@ -209,7 +230,7 @@ vector<double> TimeSVD::predict() {
         double u_m_inter = dot(u, v);
         double u_bias = this->b_u[user - 1] + this->alpha_u[user - 1] * this->devUser(time, this->t_u[user - 1])
                         + this->b_u_tui(user - 1, time);
-        double m_bias = (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * this->c_u[user - 1]
+        double m_bias = (this->b_i[movie - 1] + this->b_bin(movie - 1, bin)) * (this->c_u[user - 1] + this->c_u_t(user - 1, time))
                         + this->b_f_ui(movie - 1, freq);
         double pred = GLOBAL_BIAS + u_bias + m_bias + u_m_inter;
 
@@ -227,8 +248,8 @@ void TimeSVD::train() {
     // this->V -= 0.5;
     this->U /= this->params.initAvg;
     this->V /= this->params.initAvg;
-    this->U -= 0.5 * 1 / this->params.initAvg;;
-    this->V -= 0.5 * 1 / this->params.initAvg;;
+    // this->U -= 0.5 * 1 / this->params.initAvg;
+    // this->V -= 0.5 * 1 / this->params.initAvg;
 
     this->b_u = Col<double>(this->params.M, fill::zeros);
     this->alpha_u = Col<double>(this->params.M, fill::zeros);
@@ -237,6 +258,7 @@ void TimeSVD::train() {
     this->b_i = Col<double>(this->params.N, fill::zeros);
     this->b_bin = Mat<double>(this->params.N, NUM_BINS, fill::zeros);
     this->c_u = Col<double>(this->params.M, fill::ones);
+    this->c_u_t = Mat<double>(this->params.M, MAX_DATE, fill::zeros);
     this->b_f_ui = Mat<double>(this->params.N, MAX_FREQ, fill::zeros);
 
     this->del_U = Col<double>(this->params.K, fill::zeros);
@@ -270,16 +292,17 @@ void TimeSVD::train() {
             double del_common = this->grad_common(user, rating, this->b_u[user - 1],
                     this->alpha_u[user - 1], time, this->b_i[movie - 1],
                     this->b_bin(movie - 1, bin), this->b_u_tui(user -1, time),
-                    this->c_u[user - 1], this->b_f_ui(movie - 1, freq),
-                    &u, &v);
+                    this->c_u[user - 1], this->c_u_t(user - 1, time),
+                    this->b_f_ui(movie - 1, freq), &u, &v);
 
             double del_b_u = this->grad_b_u(del_common, this->b_u[user - 1]);
             double del_alpha_u = this->grad_alpha_u(del_common, user, time, this->alpha_u[user - 1]);
             double del_b_u_tui = this->grad_b_u_tui(del_common, this->b_u_tui(user - 1, time));
 
-            double del_b_i = this->grad_b_i(del_common, this->b_i[movie - 1], this->c_u[user - 1]);
-            double del_b_bin = this->grad_b_bin(del_common, this->b_bin(movie - 1, bin), this->c_u[user - 1]);
+            double del_b_i = this->grad_b_i(del_common, this->b_i[movie - 1], this->c_u[user - 1], this->c_u_t(user - 1, time));
+            double del_b_bin = this->grad_b_bin(del_common, this->b_bin(movie - 1, bin), this->c_u[user - 1], this->c_u_t(user - 1, time));
             double del_c_u = this->grad_c_u(del_common, this->c_u[user - 1], this->b_i[movie - 1], this->b_bin(movie - 1, bin));
+            double del_c_u_t = this->grad_c_u_t(del_common, this->c_u_t(user - 1, time), this->b_i[movie - 1], this->b_bin(movie - 1, bin));
             double del_b_f_ui = this->grad_b_f_ui(del_common, this->b_f_ui(movie - 1, freq));
 
             this->grad_U(del_common, &u, &v, e);
@@ -292,6 +315,7 @@ void TimeSVD::train() {
             this->b_i[movie - 1] -= del_b_i;
             this->b_bin(movie - 1, bin) -= del_b_bin;
             this->c_u[user - 1] -= del_c_u;
+            this->c_u_t(user - 1, time) -= del_c_u_t;
             this->b_f_ui(movie - 1, freq) -= del_b_f_ui;
 
             this->U.col(user - 1) -= this->del_U;
