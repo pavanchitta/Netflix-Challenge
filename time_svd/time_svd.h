@@ -32,6 +32,7 @@ class TimeSVD {
     Col<double> alpha_u;
     Col<double> t_u;
     Col<double> c_u;
+    Mat<double> c_u_t;
     Mat<double> f_ui;
     Mat<double> b_f_ui;
 
@@ -67,6 +68,7 @@ class TimeSVD {
         double b_bin,
         double b_u_tui,
         double c_u,
+        double c_u_t,
         double b_f_ui,
         Col<double> *Ui,
         Col<double> *Vj
@@ -85,13 +87,15 @@ class TimeSVD {
     double grad_b_i(
         double del_common,
         double b_i,
-        double c_u
+        double c_u,
+        double c_u_t
     );
 
     double grad_b_bin(
         double del_common,
         double b_bin,
-        double c_u
+        double c_u,
+        double c_u_t
     );
 
     double grad_b_u_tui(
@@ -102,6 +106,13 @@ class TimeSVD {
     double grad_c_u(
         double del_common,
         double c_u,
+        double b_i,
+        double b_bin
+    );
+
+    double grad_c_u_t(
+        double del_common,
+        double c_u_t,
         double b_i,
         double b_bin
     );
@@ -121,7 +132,7 @@ class TimeSVD {
         string train_filename,
         string test_filename,
         string valid_filename,
-        double max_epochs = 20,
+        double max_epochs = 100,
         double initAvg = pow(10, 3)
      );
 

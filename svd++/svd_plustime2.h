@@ -12,6 +12,7 @@ typedef struct {
     Data Y;
     Data Y_test;
     Data Y_valid;
+    Data Y_all;
     double max_epochs;
 } ModelParams;
 
@@ -133,7 +134,8 @@ class Model {
         double del_common,
         double c_u,
         double b_i,
-        double b_bin
+        double b_bin,
+        int e
     );
 
     double grad_b_u(
@@ -164,7 +166,8 @@ class Model {
         string train_filename,
         string test_filename,
         string valid_filename,
-        double max_epochs = 30
+        string all_filename,
+        double max_epochs = 15
      );
 
     vector<double> predict();
