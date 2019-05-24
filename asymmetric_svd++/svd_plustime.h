@@ -1,6 +1,3 @@
-#ifndef TIMESVD_H
-#define TIMESVD_H
-
 #include "../data_processing/data.h"
 #include <armadillo>
 
@@ -10,17 +7,15 @@ typedef struct {
     int M;
     int N;
     int K;
-    Data Y_all;
     Data Y;
     Data Y_test;
     Data Y_valid;
     double max_epochs;
-    double initAvg;
-} TimeSVDParams;
+} ModelParams;
 
-class TimeSVD {
+class Model {
 
-    TimeSVDParams params;
+    ModelParams params;
     Mat<double> U;
     Mat<double> V;
     Col<double> del_U;
@@ -32,12 +27,19 @@ class TimeSVD {
     Col<double> alpha_u;
     Col<double> t_u;
     Col<double> c_u;
-    Mat<double> c_u_t;
     Mat<double> f_ui;
     Mat<double> b_f_ui;
+    vector<vector<int>> N_u;
+    Col<int> N_u_size;
+    Mat<double> Y;
+    Mat<double> Y_norm;
 
     void user_date_avg();
     void user_frequency();
+    void movies_per_user();
+
+    void compute_y_norm(int user);
+    void update_y_vectors(int user, Col<double>* Vj, int e);
 
     double devUser(
         int time,
@@ -55,6 +57,7 @@ class TimeSVD {
         double del_common,
         Col<double> *Ui,
         Col<double> *Vj,
+        Col<double> *y_norm,
         int e
         );
 
@@ -68,10 +71,10 @@ class TimeSVD {
         double b_bin,
         double b_u_tui,
         double c_u,
-        double c_u_t,
         double b_f_ui,
         Col<double> *Ui,
-        Col<double> *Vj
+        Col<double> *Vj,
+        Col<double> *y_norm
     );
 
     double grad_b_u(
@@ -87,15 +90,13 @@ class TimeSVD {
     double grad_b_i(
         double del_common,
         double b_i,
-        double c_u,
-        double c_u_t
+        double c_u
     );
 
     double grad_b_bin(
         double del_common,
         double b_bin,
-        double c_u,
-        double c_u_t
+        double c_u
     );
 
     double grad_b_u_tui(
@@ -110,13 +111,6 @@ class TimeSVD {
         double b_bin
     );
 
-    double grad_c_u_t(
-        double del_common,
-        double c_u_t,
-        double b_i,
-        double b_bin
-    );
-
     double grad_b_f_ui(
         double del_common,
         double b_f_ui
@@ -124,16 +118,14 @@ class TimeSVD {
 
     public:
 
-    TimeSVD(
+    Model(
         int M,
         int N,
         int K,
-        string all_filename,
         string train_filename,
         string test_filename,
         string valid_filename,
-        double max_epochs = 100,
-        double initAvg = pow(10, 3)
+        double max_epochs = 10
      );
 
     vector<double> predict();
@@ -141,7 +133,6 @@ class TimeSVD {
     double validErr();
     void train();
     void save(char *file);
-    ~TimeSVD();
+    ~Model();
 
 };
-#endif

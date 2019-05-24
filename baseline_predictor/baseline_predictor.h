@@ -7,6 +7,8 @@ typedef struct {
     int M;
     int N;
     Data Y;
+    Data Y_test;
+    Data Y_valid;
     double eps;
     double max_epochs;
 } BaselinePredictorParams;
@@ -82,12 +84,16 @@ class BaselinePredictor {
     BaselinePredictor(
         int M,
         int N,
-        string filename,
+        string train_filename,
+        string test_filename,
+        string valid_filename,
         double eps = 0.01,
-        double max_epochs = 40
+        double max_epochs = 10
      );
 
+    vector<double> predict();
     double trainErr();
+    double validErr();
     void train();
     double devUser(int time, int user_avg);
     ~BaselinePredictor();
