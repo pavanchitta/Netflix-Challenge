@@ -293,6 +293,28 @@ vector<double> Model::predict() {
     return preds;
 }
 
+vector<double> Model::predict_train() {
+
+    vector<double> preds;
+
+    while (this->params.Y.hasNext()) {
+
+        NetflixData p = this->params.Y.nextLine();
+        int user = p.user;
+        int movie = p.movie;
+        int time = p.date;
+        //int freq = this->f_ui(user - 1, time);
+        int bin = time / DAYS_PER_BIN;
+
+        double pred = this->predict_rating(user, movie, time);
+
+        // double pred = GLOBAL_BIAS + dot(v, p_ut) + this->b_u[user - 1] + this->b_i[movie-1];
+
+        preds.push_back(pred);
+    }
+    return preds;
+}
+
 void Model::update_y_vectors(int user, Col<double>* Vj, int e) {
     vector<int> movies = this->N_u[user - 1];
     int size = this->N_u_size[user - 1];
