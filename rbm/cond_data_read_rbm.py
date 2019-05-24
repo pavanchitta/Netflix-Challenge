@@ -1,5 +1,5 @@
 import tensorflow as tf
-from rbm import RBM
+from cond_rbm import CondRBM
 
 tf.enable_eager_execution()
 
@@ -41,11 +41,13 @@ def _qual_parse_function(array):
     # values = tf.ones_like(tf.shape(indices))
     # dense_shape = [17770]
 
-    return indices
+    
+    return tf.SparseTensor(indices=indices, values=split[1:][::2], dense_shape=[17770])
 
 dset = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/train_4_qual_edited.dta")
 train_4_probe = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/train_4_pred_edited.dta")
 probe = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/probe_edited.dta")
+qual_4_probe = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/qual_for_probe_edited.dta")
 full_train = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/data/train.tf.dta")
 
 
@@ -59,26 +61,34 @@ dataset = dset.map(_user_parse_function)
 train_4_probe = train_4_probe.map(_user_parse_function)
 full_train = full_train.map(_user_parse_function)
 probe = probe.map(_test_parse_function)
+qual_4_probe = qual_4_probe.map(_qual_parse_function)
 #test_set = test_set.map(_test_parse_function)
 
-dataset = Dataset.zip((dataset, qual))
-
+dataset = tf.data.Dataset.zip((dataset, qual))
+probe_dataset = tf.data.Dataset.zip((train_4_probe, qual_4_probe))
 #user_index_dataset = dset.map(_user_parse_function)
 
 # a = model.predict(test_set, user_index_dataset)
 # print(a)
 
-rbm = RBM()
-rbm.train(dataset, 75, probe, train_4_probe)
+rbm = CondRBM()
+rbm.train(dataset, 20, probe, probe_dataset)
+
+print(tf.count_nonzero(rbm.D))
 
 ########### Submission ###############
 
-# saver = tf.contrib.eager.Saver(rbm.get_variables())
-# saver.restore("rbm_60")
+exit(0)
 
-# print("Predicting")
-# test_set = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/qual_edited.dta")
-# test_set = test_set.map(_test_parse_function)
-# rbm.pred_for_sub(test_set, dataset)
-# print("Created submission for test set")
-# rbm.pred_for_sub(full_train, full_train, True, "rbm_train.txt")
+saver = tf.contrib.eager.Saver(rbm.get_variables())
+saver.restore("cond_rbm_0523223746_10")
+
+print(tf.reduce_mean(rbm.D))
+print(tf.count_nonzero(rbm.D))
+
+print("Predicting")
+test_set = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/qual_edited.dta")
+test_set = test_set.map(_test_parse_function)
+rbm.pred_for_sub(probe, probe_dataset)
+print("Created submission for test set")
+# rbm.pred_for_sub(full_train, full_train, True, "cond_rbm_train.txt")
