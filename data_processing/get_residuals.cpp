@@ -13,23 +13,24 @@ void get_residuals(string prediction_filename, string train_filename) {
 
     file.open("residuals.dta");
 
-    while (valid_data.hasNext()) {
-        NetflixData d = valid_data.nextLine();
+    while (train_data.hasNext()) {
+        string temp;
+        getline(predictions, temp);
+        double pred = std::stod(temp);
+
+        NetflixData d = train_data.nextLine();
         int rating = d.rating;
 
-        double pred;
-        pred << predictions;
-
-        file << d.user << " " << d.movie << " " << " " 
-            << d.date << " " (double) rating - pred << endl;
+        file << d.user << " " << d.movie << " "
+            << d.date << " " << (double) rating - pred << endl;
     }
 
     file.close();
 }
 
 int main() {
-    string train_filename = "/home/ubuntu/CS156b-Netflix/rbm/rbm_train.txt";
-    string prediction_filename = "/home/ubuntu/CS156b-Netflix/data/train2.dta";
+    string prediction_filename = "/Users/vigneshv/code/CS156b-Netflix/data/rbm_train.txt";
+    string train_filename = "/Users/vigneshv/code/CS156b-Netflix/data/train2.dta";
 
     get_residuals(prediction_filename, train_filename);
 }
