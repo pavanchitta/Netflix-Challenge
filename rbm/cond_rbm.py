@@ -8,7 +8,7 @@ tfe = tf.contrib.eager
 class CondRBM:
     def __init__(self):
         self.n_visible = 17770
-        self.batch_size = 2
+        self.batch_size = 100
         self.n_hidden = 100
         self.momentum = tf.constant(0.9)
         self.weight_decay = tf.constant(0.001)
@@ -126,7 +126,9 @@ class CondRBM:
         mask = tf.stack([mask, mask, mask, mask, mask], axis=1)
 
         weight_grad, hidden_bias_grad, visible_bias_grad, D_grad = self.CD_k(visibles, r, mask)
-        return [weight_grad, hidden_bias_grad, visible_bias_grad, D_grad]
+        return [tf.negative(weight_grad), tf.negative(hidden_bias_grad), tf.negative(visible_bias_grad), tf.negative(D_grad)]
+
+        # return [weight_grad, hidden_bias_grad, visible_bias_grad, D_grad]
         # Compute new velocities
         # new_w_v = self.momentum * self.w_v + self.lr * weight_grad
         # new_hb_v = self.momentum * self.hb_v + self.lr * hidden_bias_grad
