@@ -62,10 +62,11 @@ class CondFactorRBM:
         self.A_v = tf.zeros(tf.shape(self.A))
         self.B_v = tf.zeros(tf.shape(self.B))
 
+    def get_learning_rates(self):
+        return [self.lr_A, self.lr_B, self.lr_hb, self.lr_vb, self.lr_D]
 
     def update_weights(self):
         self.weights = tf.tensordot(self.A, self.B, [[2], [0]])
-        print(self.weights)
 
     def forward_prop(self, visible, r):
         '''Computes a vector of probabilities hidden units are set to 1 given
@@ -158,24 +159,6 @@ class CondFactorRBM:
         A_grad, B_grad, hidden_bias_grad, visible_bias_grad, D_grad = self.CD_k(visibles, r, mask)
         return [tf.negative(A_grad), tf.negative(B_grad), tf.negative(hidden_bias_grad), tf.negative(visible_bias_grad), tf.negative(D_grad)]
 
-        # return [weight_grad, hidden_bias_grad, visible_bias_grad, D_grad]
-        # Compute new velocities
-        # new_w_v = self.momentum * self.w_v + self.lr * weight_grad
-        # new_hb_v = self.momentum * self.hb_v + self.lr * hidden_bias_grad
-        # new_vb_v = self.momentum * self.vb_v + self.lr * visible_bias_grad
-
-        # new_w_v = self.lr * weight_grad
-        # new_hb_v = self.lr * hidden_bias_grad
-        # new_vb_v = self.lr * visible_bias_grad
-        # Update parameters
-        # self.weights = tf.add(self.weights, tf.scalar_mul(-self.lr, weight_grad))
-        # self.hidden_bias = tf.add(self.hidden_bias, tf.scalar_mul(-self.lr, hidden_bias_grad))
-        # self.visible_bias = tf.add(self.visible_bias, tf.scalar_mul(-self.lr, visible_bias_grad))
-        # Update velocities
-        # update_w_v = tf.assign(self.w_v, new_w_v)
-        # update_hb_v = tf.assign(self.hb_v, new_hb_v)
-        # update_vb_v = tf.assign(self.vb_v, new_vb_v)
-        #return [update_w, update_hb, update_vb]
 
     def get_variables(self):
         return [self.A, self.B, self.hidden_bias, self.visible_bias, self.D]
@@ -211,18 +194,16 @@ class CondFactorRBM:
         return "cond_rbm_" + st
 
     def train(self, dataset, epochs, probe_set, probe_train):
-        # Computation graph definition
         batched_dataset = dataset.batch(self.batch_size)
         iterator = batched_dataset.make_one_shot_iterator()
         optimizer = tf.contrib.opt.MomentumWOptimizer(self.weight_decay, self.lr, self.momentum)
 
-        # Main training loop, needs adjustments depending on how training data is handled
-        #print(self.visible_bias)
+
         for epoch in range(epochs):
             if self.anneal:
-                self.lr_weights = self.lr_weights / (1 + epoch / self.anneal_val)
-                self.lr_vb = self.lr_vb / (1 + epoch / self.anneal_val)
-                self.lr_hb = self.lr_hb / (1 + epoch / self.anneal_val)
+                for lr in self.get_learning_rates():
+                    lr /= (1 + epoch / self.anneal_val)
+
 
 
             if epoch == 42:
