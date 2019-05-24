@@ -11,6 +11,7 @@ class CondFactorRBM:
         self.batch_size = 100
         self.n_hidden = 500
         self.C = 30
+        self.lr = 0.0015
 
         self.momentum = tf.constant(0.9)
         self.weight_decay = tf.constant(0.001)
@@ -213,7 +214,7 @@ class CondFactorRBM:
         # Computation graph definition
         batched_dataset = dataset.batch(self.batch_size)
         iterator = batched_dataset.make_one_shot_iterator()
-        optimizer = tf.train.MomentumOptimizer(0.01, 0.9)
+        optimizer = tf.contrib.opt.MomentumWOptimizer(self.weight_decay, self.lr, self.momentum)
 
         # Main training loop, needs adjustments depending on how training data is handled
         #print(self.visible_bias)
