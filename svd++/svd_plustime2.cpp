@@ -59,76 +59,76 @@ void Model::grad_V(double del_common, Col<double> *Ui, Col<double> *Vj, Col<doub
 }
 
 double Model::grad_b_u(double del_common, double b_u, int e) {
-    // double eta = 2.67 * pow(10, -3);
-    // double reg = 2.55 * pow(10, -2);
-    double eta = 0.007 * pow(0.9, e);
-    double reg = 0.005;
+    double eta = 2.67 * pow(10, -3);
+    double reg = 2.55 * pow(10, -2);
+    // double eta = 0.007;// * pow(0.9, e);
+    // double reg = 0.005;
     return -eta * del_common + eta * reg * b_u;
 }
 
 double Model::grad_b_u_tui(double del_common, double b_u_tui, int e) {
-    double eta = 0.007 * pow(0.9, e);
-    double reg = 0.005;
-    // double eta = 2.57 * pow(10, -3);
-    // double reg = 0.231 * pow(10, -2);
+    // double eta = 0.007;// * pow(0.9, e);
+    // double reg = 0.005;
+    double eta = 2.57 * pow(10, -3);
+    double reg = 0.231 * pow(10, -2);
     return -eta * del_common + eta * reg * b_u_tui;
 }
 
 double Model::grad_b_f_ui(double del_common, double b_f_ui, int e) {
-    // double eta = 2.36 * pow(10, -3);
-    // double reg = 1.1 * pow(10, -8);
-    double eta = 0.007 * pow(0.9, e);
-    double reg = 0.000005;
+    double eta = 2.36 * pow(10, -3);
+    double reg = 1.1 * pow(10, -8);
+    // double eta = 0.007;// * pow(0.9, e);
+    // double reg = 0.000005;
     return -eta * del_common + eta * reg * b_f_ui;
 }
 
 double Model::grad_b_i(double del_common, double b_i, double c_u, double c_ut, int e) {
-    // double eta = 0.488 * pow(10, -3);
-    // double reg = 2.55 * pow(10, -2);
-    double eta = 0.007 * pow(0.9, e);
-    double reg = 0.005;
+    double eta = 0.488 * pow(10, -3);
+    double reg = 2.55 * pow(10, -2);
+    // double eta = 0.007;// * pow(0.9, e);
+    // double reg = 0.005;
     return -eta * del_common * (c_u + c_ut) + eta * reg * b_i;
 }
 
 double Model::grad_b_bin(double del_common, double b_bin, double c_u, double c_ut, int e) {
-    double eta = 0.007 * pow(0.9, e);
-    double reg = 0.005;
-    // double eta = 0.115 * pow(10, -3);
-    // double reg = 9.29 * pow(10, -2);
+    // double eta = 0.007;// * pow(0.9, e);
+    // double reg = 0.005;
+    double eta = 0.115 * pow(10, -3);
+    double reg = 9.29 * pow(10, -2);
     return -eta * del_common * (c_u + c_ut) + eta * reg * b_bin;
 }
 
 double Model::grad_c_u(double del_common, double c_u, double b_i, double b_bin, int e) {
-    // double eta = 5.64 * pow(10, -3);
-    // double reg = 4.76 * pow(10, -2);
-    double eta = 0.007 * pow(0.9, e);
-    double reg = 0.005;
+    double eta = 5.64 * pow(10, -3);
+    double reg = 4.76 * pow(10, -2);
+    // double eta = 0.007;// * pow(0.9, e);
+    // double reg = 0.005;
     return -eta * del_common * (b_i + b_bin) + eta * reg * (c_u - 1);
 }
 
 double Model::grad_c_ut(double del_common, double c_ut, double b_i, double b_bin, int e) {
-    // double eta = 1.03 * pow(10, -3);
-    // double reg = 1.90 * pow(10, -2);
-    double eta = 0.007 * pow(0.9, e);
-    double reg = 0.005;
+    double eta = 1.03 * pow(10, -3);
+    double reg = 1.90 * pow(10, -2);
+    // double eta = 0.007;// * pow(0.9, e);
+    // double reg = 0.005;
     return -eta * del_common * (b_i + b_bin) + eta * reg * (c_ut);
 }
 
 double Model::grad_alpha_u(double del_common, int user, int time, double alpha_u, int e) {
-    double eta = 0.00001 * pow(0.9, e);
-    double reg = 10;
-    // double eta = 3.11 * pow(10, -6);
-    // double reg = 395 * pow(10, -2);
+    // double eta = 0.00001;// * pow(0.9, e);
+    // double reg = 10;
+    double eta = 3.11 * pow(10, -6);
+    double reg = 395 * pow(10, -2);
     //double reg = 0.015;
     return -eta * devUser(time, this->t_u[user - 1]) * del_common
            + eta * reg * alpha_u;
 }
 
 void Model::grad_alpha_uk(double del_common, int user, int time, Col<double>* alpha_uk, Col<double>* Vj, int e) {
-    double eta = 0.00001 * pow(0.9, e);
-    double reg = 10;
-    // double eta = 1 * pow(10, -5);
-    // double reg = 50.0;
+    // double eta = 0.00001;// * pow(0.9, e);
+    // double reg = 10;
+    double eta = 1 * pow(10, -5);
+    double reg = 50.0;
     //double reg = 0.015;
     this->del_alpha_uk =  -eta * devUser(time, this->t_u[user - 1]) * *Vj * del_common
            + eta * reg * *alpha_uk;
