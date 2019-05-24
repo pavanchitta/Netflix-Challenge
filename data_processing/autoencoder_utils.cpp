@@ -10,9 +10,10 @@ void fill(int *k, int size ){
 		k[i] = -1;
 	}
 }
-int* find_missing_users(string train_filename, string valid_filename) {
+int* find_missing_users(string train_filename, string valid_filename, int* missing_qual) {
 	int *missing_users = new int[500000];
 	fill(missing_users, 500000);
+	int qual_index = 0;
 
 	int *probe_users = new int[500000];
 	Data train_data = Data(train_filename);
@@ -40,25 +41,70 @@ int* find_missing_users(string train_filename, string valid_filename) {
 
 		if (current_user != user) {
 			if (user == probe_users[check_index]) {
+
 				check_index++;
+				if (user != current_user + 1) {
+					check_index++;
+				}
 			}
 			else {
+				// if (user == missing_qual[qual_index]) {
+				// 	qual_index++;
+				// }
+
 				missing_users[missing] = user;
 				missing++;
+
+
 			}
 			current_user = user;
 
 		}
 	}
 
-	cout << missing << endl;
+	cout << missing_users[190] << endl;
+	cout << missing_users[200] << endl;
+	cout << missing_users[210] << endl;
+
+
+
 	return missing_users;
 }
+
+int* find_missing_qual(string test_filename) {
+	int *missing_users = new int[500000];
+	fill(missing_users, 500000);
+	int missing_index = 0;
+	Data test_data = Data(test_filename);
+	int index = 0;
+	int current_user = -1;
+
+	while (test_data.hasNext()) {
+		NetflixData d = test_data.nextLine();
+		int user = d.user;
+
+		if (current_user == -1) {
+			current_user = user;
+		}
+
+		if (current_user != user) {
+			if (current_user != user - 1) {
+				missing_users[missing_index] = user - 1;
+				missing_index++;
+			}
+
+			current_user = user;
+		}
+	}
+
+	return missing_users;
+}
+
 
 void probe_for_pred(string valid_filename) {
 	Data valid_data = Data(valid_filename);
 	ofstream file;
-	file.open("probe_edited.dta");
+	file.open("qual_edited.dta");
 
     int current_user = -1;
     int8_t *ratings = new int8_t[10000];
@@ -112,7 +158,7 @@ void train_for_pred(int* missing, string train_filename) {
 	int missing_index = 0;
 
 	ofstream file;
-	file.open("train_4_pred_edited.dta");
+	file.open("qual_4_pred_edited.dta");
 
     while (train_data.hasNext()) {
         NetflixData d = train_data.nextLine();
@@ -126,6 +172,7 @@ void train_for_pred(int* missing, string train_filename) {
 			if (current_user == missing[missing_index]) {
 				missing_index++;
 				current_user = user;
+				size = 0;
 				continue;
 			}
 
@@ -165,17 +212,16 @@ void train_for_pred(int* missing, string train_filename) {
 }
 
 int main() {
-    string train_filename = "/Users/matthewzeitlin/Desktop/CS156b-Netflix/data/train2.dta";
     string test_filename = "/Users/matthewzeitlin/Desktop/CS156b-Netflix/data/qual.dta";
     string valid_filename = "/Users/matthewzeitlin/Desktop/CS156b-Netflix/data/probe.dta";
 
-	int* missing = find_missing_users(train_filename, valid_filename);
-	cout << missing[0] << endl;
-	cout << missing[1] << endl;
+	int* missing_qual = find_missing_qual(test_filename);
+	// int* missing = find_missing_users(test_filename, valid_filename, missing_qual);
+	//cout << missing[0] << endl;
+	//cout << missing[1] << endl;
 
-	cout << missing[2] << endl;
+	//cout << missing[2] << endl;
 
-	train_for_pred(missing, train_filename);
-	probe_for_pred(valid_filename);
+	train_for_pred(missing_qual, test_filename);
 
 }
