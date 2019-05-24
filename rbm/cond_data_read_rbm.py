@@ -1,5 +1,6 @@
 import tensorflow as tf
 from cond_rbm import CondRBM
+from cond_rbm_factor import CondFactorRBM
 
 tf.enable_eager_execution()
 
@@ -38,21 +39,17 @@ def _qual_parse_function(array):
     indices = tf.reshape(tf.math.add(split[1:][::2], -1), [-1,1])
 
 
-    # values = tf.ones_like(tf.shape(indices))
-    # dense_shape = [17770]
-
-    
     return tf.SparseTensor(indices=indices, values=split[1:][::2], dense_shape=[17770])
 
-dset = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/train_4_qual_edited.dta")
-train_4_probe = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/train_4_pred_edited.dta")
-probe = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/probe_edited.dta")
-qual_4_probe = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/qual_for_probe_edited.dta")
-full_train = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/data/train.tf.dta")
+dset = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/train_4_qual_edited.dta")
+train_4_probe = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/train_4_pred_edited.dta")
+probe = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/probe_edited.dta")
+qual_4_probe = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/qual_for_probe_edited.dta")
+full_train = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data/train.tf.dta")
 
 
 
-qual = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/qual_edited.dta")
+qual = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/qual_edited.dta")
 qual = qual.map(_qual_parse_function)
 
 # test_set = tf.data.TextLineDataset("/home/CS156b-Netflix/data/probe.dta")
@@ -71,20 +68,15 @@ probe_dataset = tf.data.Dataset.zip((train_4_probe, qual_4_probe))
 # a = model.predict(test_set, user_index_dataset)
 # print(a)
 
-rbm = CondRBM()
+rbm = CondFactorRBM()
 rbm.train(dataset, 20, probe, probe_dataset)
 
-print(tf.count_nonzero(rbm.D))
 
 ########### Submission ###############
 
-exit(0)
 
-saver = tf.contrib.eager.Saver(rbm.get_variables())
-saver.restore("cond_rbm_0523223746_10")
 
-print(tf.reduce_mean(rbm.D))
-print(tf.count_nonzero(rbm.D))
+
 
 print("Predicting")
 test_set = tf.data.TextLineDataset("/home/ubuntu/CS156b-Netflix/deep_autoencoder/qual_edited.dta")
