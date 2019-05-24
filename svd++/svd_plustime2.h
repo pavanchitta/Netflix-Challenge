@@ -29,6 +29,7 @@ class Model {
     Col<double> b_u;
     Mat<double> b_bin;
     Col<double> c_u;
+    Mat<double> c_ut;
     Mat<double> b_u_tui;
     Mat<double> f_ui;
     Mat<double> b_f_ui;
@@ -38,6 +39,8 @@ class Model {
     Col<double> alpha_u;
     vector<vector<int>> N_u;
     Col<int> N_u_size;
+    vector<vector<int>> R_u;
+    Col<int> R_u_size;
     Mat<double> Y;
     Mat<double> Y_norm;
     Mat<int> Ratings;
@@ -46,6 +49,7 @@ class Model {
     //vector<vector<int>> Ratings_vec;
 
     void movies_per_user();
+    void implicit_movies_per_user();
     void user_frequency();
     void user_date_avg();
 
@@ -91,6 +95,7 @@ class Model {
         double b_f_ui,
         double alpha_u,
         double c_u,
+        double c_ut,
         //Col<double> *p_u_kt,
         Col<double> *dev_alpha_uk,
         Col<double> *Ui,
@@ -138,6 +143,14 @@ class Model {
         int e
     );
 
+    double grad_c_ut(
+        double del_common,
+        double c_ut,
+        double b_i,
+        double b_bin,
+        int e
+    );
+
     double grad_b_u(
         double del_common,
         double b_u, int e);
@@ -145,12 +158,12 @@ class Model {
 
     double grad_b_i(
         double del_common,
-        double b_i, double c_u, int e
+        double b_i, double c_u, double c_ut, int e
     );
 
     double grad_b_bin(
         double del_common,
-        double b_bin, double c_u,
+        double b_bin, double c_u, double c_ut,
         int e
     );
 
@@ -167,10 +180,11 @@ class Model {
         string test_filename,
         string valid_filename,
         string all_filename,
-        double max_epochs = 15
+        double max_epochs = 18
      );
 
     vector<double> predict();
+    vector<double> predict_probe();
     double trainErr();
     double validErr();
     void train();
