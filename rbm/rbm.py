@@ -19,6 +19,7 @@ class RBM:
 
         self.anneal = False
         self.anneal_val = tf.constant(0.0)
+        self.num_users = 458293
 
         # if momentum:
         #     self.momentum = tf.placeholder(tf.float32)
@@ -34,23 +35,24 @@ class RBM:
         arr = np.loadtxt("movie_frequencies.dta")
 
         visible_bias = tf.to_float(tf.transpose(tf.constant(arr)))
-        self.hidden_bias = tfe.Variable(tf.constant(0.0, shape=[self.n_hidden]), name='h_bias')
+        self.hidden_bias = tfe.Variable(tf.constant(0.0, shape=[self.num_users, self.n_hidden]), name='h_bias')
         self.visible_bias = tfe.Variable(visible_bias, name='v_bias')
 
         self.weight_v = tf.zeros(tf.shape(self.weights))
         self.visible_bias_v = tf.zeros(tf.shape(self.visible_bias))
         self.hidden_bias_v = tf.zeros(tf.shape(self.hidden_bias))
- 
+
         # Initialize momentum velocities
         # self.w_v = tfe.Variable(tf.zeros([n_visible, n_hidden, num_rat]), dtype=tf.float32)
 		# self.hb_v = tfe.Variable(tf.zeros([n_hidden]), dtype=tf.float32)
 		# self.vb_v = tfe.Variable(tf.zeros([n_visible, num_rat]), dtype=tf.float32)
 
-    def forward_prop(self, visible):
+    def forward_prop(self, visible, users):
         '''Computes a vector of probabilities hidden units are set to 1 given
         visible unit states'''
+        hidden_bias = tf.batch_gather(self.hidden_bias, users)
 
-        pre_activation = tf.add(tf.tensordot(visible, self.weights, [[1, 2], [1, 0]]), self.hidden_bias)
+        pre_activation = tf.add(tf.tensordot(visible, self.weights, [[1, 2], [1, 0]]), hidden_bias)
         return tf.nn.sigmoid(pre_activation)
 
 
@@ -59,9 +61,9 @@ class RBM:
         hidden unit states'''
         return tf.nn.softmax(tf.add(tf.transpose(tf.tensordot(hidden, self.weights, [[1], [2]]), perm=[0, 2, 1]), self.visible_bias), axis=1)
 
-    def sample_h_given_v(self, visible_sample, binary=True):
+    def sample_h_given_v(self, visible_sample, users, binary=True):
         '''Sample a hidden unit vector based on state probabilities given visible unit states.'''
-        hidden_probs = self.forward_prop(visible_sample)
+        hidden_probs = self.forward_prop(visible_sample, users)
         if binary:
         # Relu is just to convert -1 to 0 for sampled vector
             return tf.nn.relu(tf.sign(tf.subtract(hidden_probs, tf.random_uniform(tf.shape(hidden_probs)))))
@@ -79,51 +81,58 @@ class RBM:
 
 
 
-    def CD_k(self, visibles, mask):
+    def CD_k(self, visibles, mask, users):
         '''Contrastive divergence with k steps of Gibbs Sampling.'''
-        orig_hidden = self.sample_h_given_v(visibles)
+        orig_hidden = self.sample_h_given_v(visibles, users)
         # k steps of alternating parallel updates
         for i in range(self.k):
             if i == 0:
                 hidden_samples = orig_hidden
             visible_samples = self.sample_v_given_h(hidden_samples, binary=False) * mask
             if i == self.k - 1:
-                hidden_samples = self.sample_h_given_v(visible_samples, binary=False)
+                hidden_samples = self.sample_h_given_v(visible_samples, users, binary=False)
             else:
-                hidden_samples = self.sample_h_given_v(visible_samples)
+                hidden_samples = self.sample_h_given_v(visible_samples, users)
 
 
         w_grad_pos = tf.einsum('ai,ajm->mji', orig_hidden, visibles)
 
         # Second term, based on reconstruction from Gibbs Sampling
 
-        user_rated = (5 / (tf.maximum(tf.reduce_sum(mask, axis=(0, 1)), 1)))
+        #user_rated = (5 / (tf.maximum(tf.reduce_sum(mask, axis=(0, 1)), 1)))
         w_neg_grad = tf.einsum('ai,ajm->mji', hidden_samples, visible_samples)
         # w_neg_grad = tf.scalar_mul(1 / self.batch_size, w_neg_grad)
         # w_neg_grad = tf.reduce_sum(tf.transpose(tf.tensordot(visible_samples, hidden_samples, [[0], [0]]), perm=[1, 0, 2]), axis=1)
-        
+
         w_grad_tot = tf.subtract(w_grad_pos, w_neg_grad)
         # w_grad_tot = tf.einsum('i,ijk->ijk', user_rated, w_grad_tot)
-        
+
         # Calculate total gradient, accounting for expectation
         # w_grad_tot = tf.stack([w_grad_tot, w_grad_tot, w_grad_tot, w_grad_tot, w_grad_tot], axis=1)
         # Bias gradients
         # hb_grad = tf.reduce_mean(tf.subtract(orig_hidden, hidden_samples), axis=0)
-        hb_grad = tf.reduce_sum(tf.subtract(orig_hidden, hidden_samples), axis=0)
-        
+        hb_grad_tot = tf.zeros((self.num_users, self.n_hidden))
+        hb_grad = tf.subtract(orig_hidden, hidden_samples)
+        for i in range(tf.shape(users)):
+
+            hb_grad_tot[users[i]] = hb_grad[i]
+
+
+        #hb_grad = tf.reduce_sum(tf.subtract(orig_hidden, hidden_samples), axis=0)
+
         vb_grad = tf.reduce_sum(tf.subtract(visibles, visible_samples), axis=0)
         # vb_grad = tf.einsum('i,ji->ji', user_rated, vb_grad)
 
-        return w_grad_tot, hb_grad, vb_grad
+        return w_grad_tot, hb_grad_tot, vb_grad
 
-    def learn(self, visibles):
+    def learn(self, visibles, users):
 
         reduced_visibles = tf.reduce_sum(visibles, axis=1)
 
         mask = tf.where(tf.equal(reduced_visibles, 0), tf.zeros_like(reduced_visibles), tf.ones_like(reduced_visibles))
         mask = tf.stack([mask, mask, mask, mask, mask], axis=1)
 
-        weight_grad, hidden_bias_grad, visible_bias_grad = self.CD_k(visibles, mask)
+        weight_grad, hidden_bias_grad, visible_bias_grad = self.CD_k(visibles, mask, users)
 
         # return [weight_grad, hidden_bias_grad, visible_bias_grad]
         return [tf.math.negative(weight_grad), tf.math.negative(hidden_bias_grad), tf.math.negative(visible_bias_grad)]
@@ -172,8 +181,6 @@ class RBM:
         # Computation graph definition
         batched_dataset = dataset.batch(self.batch_size)
         iterator = batched_dataset.make_one_shot_iterator()
-        # Main training loop, needs adjustments depending on how training data is handled
-        #print(self.visible_bias)
         optimizer = tf.contrib.opt.MomentumWOptimizer(0.001, 0.01 / self.batch_size, 0.9)
 
         for epoch in range(epochs):
@@ -195,10 +202,11 @@ class RBM:
             try:
                 while True:
                     training_point = iterator.get_next()
-                    x = tf.sparse.to_dense(training_point, default_value = -1)
+                    x = tf.sparse.to_dense(training_point[1], default_value = -1)
+                    user = training_point[0]
 
                     x_hot = tf.one_hot(x, self.num_rat, axis=1)
-                    grads = self.learn(x_hot)
+                    grads = self.learn(x_hot, user)
                     optimizer.apply_gradients(zip(grads, [self.weights, self.hidden_bias, self.visible_bias]))
                     # self.apply_gradients(grads)
                     num_pts += 1
@@ -230,10 +238,11 @@ class RBM:
         pred_iterator = pred_set.make_one_shot_iterator()
 
         training_point = pred_iterator.get_next()
-        x = tf.sparse.to_dense(training_point, default_value = -1)
+        x = tf.sparse.to_dense(training_point[1], default_value = -1)
+        user = training_point[0]
         x_hot = tf.one_hot(x, self.num_rat, axis=1)
         batch_count = 0
-        curr_preds = self.forward(x_hot, False)
+        curr_preds = self.forward(x_hot, user, False)
 
 
         batch_count = 0
@@ -246,9 +255,10 @@ class RBM:
 
                 total_predictions = tf.concat([total_predictions, test_preds], 0)
                 training_point = pred_iterator.get_next()
-                x = tf.sparse.to_dense(training_point, default_value = -1)
+                x = tf.sparse.to_dense(training_point[1], default_value = -1)
+                user = training_point[0]
                 x_hot = tf.one_hot(x, self.num_rat, axis=1)
-                curr_preds = self.forward(x_hot, False)
+                curr_preds = self.forward(x_hot, user, False)
 
         except tf.errors.OutOfRangeError:
             pass
@@ -267,10 +277,11 @@ class RBM:
         pred_iterator = pred_set.make_one_shot_iterator()
 
         training_point = pred_iterator.get_next()
-        x = tf.sparse.to_dense(training_point, default_value = -1)
+        x = tf.sparse.to_dense(training_point[1], default_value = -1)
+        user = training_point[0]
         x_hot = tf.one_hot(x, self.num_rat, axis=1)
         batch_count = 0
-        curr_preds = self.forward(x_hot, False)
+        curr_preds = self.forward(x_hot, user, False)
 
 
         batch_count = 0
@@ -287,9 +298,10 @@ class RBM:
                 actual = tf.concat([actual, row_batch.values], 0)
                 batch_count += self.batch_size
                 training_point = pred_iterator.get_next()
-                x = tf.sparse.to_dense(training_point, default_value = -1)
+                x = tf.sparse.to_dense(training_point[1], default_value = -1)
+                user = training_point[0]
                 x_hot = tf.one_hot(x, self.num_rat, axis=1)
-                curr_preds = self.forward(x_hot, False)
+                curr_preds = self.forward(x_hot, user, False)
 
         except tf.errors.OutOfRangeError:
             pass
@@ -299,8 +311,8 @@ class RBM:
         return total_predictions, total_error
 
 
-    def forward(self, visibles, should_mask=True):
-        hidden_samples = self.sample_h_given_v(visibles, False)
+    def forward(self, visibles, users, should_mask=True):
+        hidden_samples = self.sample_h_given_v(visibles, users, False)
         visible_samples = self.sample_v_given_h(hidden_samples)
 
         reduced_visibles = tf.reduce_sum(visibles, axis=1)
