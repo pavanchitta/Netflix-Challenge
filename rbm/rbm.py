@@ -13,9 +13,9 @@ class RBM:
         self.weight_decay = tf.constant(0.0)
         self.k = 1
         self.num_rat = 5
-        self.lr_weights = tf.constant(0.002)
-        self.lr_vb = tf.constant(0.0012)
-        self.lr_hb = tf.constant(0.1)
+        self.lr_weights = tf.constant(0.0005)
+        self.lr_vb = tf.constant(0.0005)
+        self.lr_hb = tf.constant(0.01)
 
         self.anneal = False
         self.anneal_val = tf.constant(0.0)
@@ -88,7 +88,7 @@ class RBM:
                 hidden_samples = orig_hidden
             visible_samples = self.sample_v_given_h(hidden_samples, binary=False) * mask
             if i == self.k - 1:
-                hidden_samples = self.sample_h_given_v(visible_samples, binary=True)
+                hidden_samples = self.sample_h_given_v(visible_samples, binary=False)
             else:
                 hidden_samples = self.sample_h_given_v(visible_samples)
 
@@ -151,23 +151,23 @@ class RBM:
         return [self.hidden_bias, self.visible_bias, self.weights]
 
     def apply_gradients(self, grads):
-        weight_update = tf.add(tf.scalar_mul(self.lr_weights, grads[0]), tf.scalar_mul(self.momentum, self.weight_v))
-        self.weight_v = weight_update
+        self.weight_v = tf.add(grads[0], tf.scalar_mul(self.momentum, self.weight_v))
 
         # weight_update -= tf.scalar_mul(self.weight_decay, self.weights)
-        tf.assign(self.weights, tf.add(self.weights, weight_update))
+        tf.assign(self.weights, tf.add(self.weights, tf.scalar_mul(self.lr_weights, self.weight_v)))
 
-        hb_update = tf.add(tf.scalar_mul(self.lr_hb, grads[1]), tf.scalar_mul(self.momentum, self.hidden_bias_v))
-        # hb_update -= tf.scalar_mul(self.weight_decay, self.hidden_bias)
+        self.hidden_bias_v = tf.add(grads[1], tf.scalar_mul(self.momentum, self.hidden_bias_v))
+        tf.assign(self.hidden_bias, tf.add(self.hidden_bias, tf.scalar_mul(self.lr_hb, self.hidden_bias_v)))
 
-        self.hidden_bias_v = hb_update
-        tf.assign(self.hidden_bias, tf.add(self.hidden_bias, hb_update))
+        self.visible_bias_v = tf.add(grads[2], tf.scalar_mul(self.momentum, self.visible_bias_v))
+        tf.assign(self.visible_bias, tf.add(self.visible_bias, tf.scalar_mul(self.lr_vb, self.visible_bias_v)))
 
-        vb_update = tf.add(tf.scalar_mul(self.lr_vb, grads[2]), tf.scalar_mul(self.momentum, self.visible_bias_v))
+
+        # vb_update = tf.add(tf.scalar_mul(self.lr_vb, grads[2]), tf.scalar_mul(self.momentum, self.visible_bias_v))
         # vb_update -= tf.scalar_mul(self.weight_decay, self.visible_bias)
 
-        self.visible_bias_v = vb_update
-        tf.assign(self.visible_bias, tf.add(self.visible_bias, vb_update))
+        # self.visible_bias_v = vb_update
+        # tf.assign(self.visible_bias, tf.add(self.visible_bias, vb_update))
 
     def train(self, dataset, epochs, probe_set, probe_train):
         # Computation graph definition
