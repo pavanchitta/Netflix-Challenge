@@ -8,7 +8,7 @@ tfe = tf.contrib.eager
 class CondFactorRBM:
     def __init__(self):
         self.n_visible = 17770
-        self.batch_size = 100
+        self.batch_size = 1000
         self.n_hidden = 500
         self.C = 30
         self.lr = 0.0015
@@ -24,7 +24,6 @@ class CondFactorRBM:
         self.lr_vb = tf.constant(0.0015)
         self.lr_hb = tf.constant(0.0015)
         self.lr_D = tf.constant(0.0015)
-
 
         self.anneal = False
         self.anneal_val = 0.0

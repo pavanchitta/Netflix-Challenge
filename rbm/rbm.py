@@ -7,7 +7,7 @@ tfe = tf.contrib.eager
 class RBM:
     def __init__(self):
         self.n_visible = 17770
-        self.batch_size = 100
+        self.batch_size = 1000
         self.n_hidden = 100
         self.momentum = tf.constant(0.9)
         self.weight_decay = tf.constant(0.0)
@@ -95,25 +95,24 @@ class RBM:
 
         w_grad_pos = tf.einsum('ai,ajm->mji', orig_hidden, visibles)
 
-        # w_grad_pos = tf.scalar_mul(1 / self.batch_size, w_grad_pos)
-        # w_grad_pos = tf.reduce_sum(tf.transpose(tf.tensordot(visibles, orig_hidden, [[0], [0]]), perm=[1, 0, 2]), axis=1)
-        # print(w_grad_pos)
-            # Second term, based on reconstruction from Gibbs Sampling
+        # Second term, based on reconstruction from Gibbs Sampling
 
         user_rated = (5 / (tf.maximum(tf.reduce_sum(mask, axis=(0, 1)), 1)))
         w_neg_grad = tf.einsum('ai,ajm->mji', hidden_samples, visible_samples)
         # w_neg_grad = tf.scalar_mul(1 / self.batch_size, w_neg_grad)
         # w_neg_grad = tf.reduce_sum(tf.transpose(tf.tensordot(visible_samples, hidden_samples, [[0], [0]]), perm=[1, 0, 2]), axis=1)
+        
         w_grad_tot = tf.subtract(w_grad_pos, w_neg_grad)
-        w_grad_tot = tf.einsum('i,ijk->ijk', user_rated, w_grad_tot)
-
+        # w_grad_tot = tf.einsum('i,ijk->ijk', user_rated, w_grad_tot)
+        
         # Calculate total gradient, accounting for expectation
         # w_grad_tot = tf.stack([w_grad_tot, w_grad_tot, w_grad_tot, w_grad_tot, w_grad_tot], axis=1)
         # Bias gradients
-        hb_grad = tf.reduce_mean(tf.subtract(orig_hidden, hidden_samples), axis=0)
-
+        # hb_grad = tf.reduce_mean(tf.subtract(orig_hidden, hidden_samples), axis=0)
+        hb_grad = tf.reduce_sum(tf.subtract(orig_hidden, hidden_samples), axis=0)
+        
         vb_grad = tf.reduce_sum(tf.subtract(visibles, visible_samples), axis=0)
-        vb_grad = tf.einsum('i,ji->ji', user_rated, vb_grad)
+        # vb_grad = tf.einsum('i,ji->ji', user_rated, vb_grad)
 
         return w_grad_tot, hb_grad, vb_grad
 
@@ -126,8 +125,8 @@ class RBM:
 
         weight_grad, hidden_bias_grad, visible_bias_grad = self.CD_k(visibles, mask)
 
-        return [weight_grad, hidden_bias_grad, visible_bias_grad]
-        # return [tf.math.negative(weight_grad), tf.math.negative(hidden_bias_grad), tf.math.negative(visible_bias_grad)]
+        # return [weight_grad, hidden_bias_grad, visible_bias_grad]
+        return [tf.math.negative(weight_grad), tf.math.negative(hidden_bias_grad), tf.math.negative(visible_bias_grad)]
 
         # Compute new velocities
         # new_w_v = self.momentum * self.w_v + self.lr * weight_grad
@@ -175,7 +174,7 @@ class RBM:
         iterator = batched_dataset.make_one_shot_iterator()
         # Main training loop, needs adjustments depending on how training data is handled
         #print(self.visible_bias)
-        # optimizer = tf.train.MomentumOptimizer(0.01, 0.0)
+        optimizer = tf.contrib.opt.MomentumWOptimizer(0.001, 0.01 / self.batch_size, 0.9)
 
         for epoch in range(epochs):
             if self.anneal:
@@ -200,8 +199,8 @@ class RBM:
 
                     x_hot = tf.one_hot(x, self.num_rat, axis=1)
                     grads = self.learn(x_hot)
-                    # optimizer.apply_gradients(zip(grads, [self.weights, self.hidden_bias, self.visible_bias]))
-                    self.apply_gradients(grads)
+                    optimizer.apply_gradients(zip(grads, [self.weights, self.hidden_bias, self.visible_bias]))
+                    # self.apply_gradients(grads)
                     num_pts += 1
                     train_rmse = tf.sqrt( tf.scalar_mul(1 / tf.to_float(tf.count_nonzero(tf.add(x, 1))),
                         tf.reduce_sum(tf.square(tf.subtract(self.forward(x_hot), tf.to_float(tf.add(x, 1)))))))

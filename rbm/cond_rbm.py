@@ -8,7 +8,7 @@ tfe = tf.contrib.eager
 class CondRBM:
     def __init__(self):
         self.n_visible = 17770
-        self.batch_size = 100
+        self.batch_size = 1000
         self.n_hidden = 100
         self.momentum = tf.constant(0.9)
         self.weight_decay = tf.constant(0.001)
@@ -90,6 +90,7 @@ class CondRBM:
 
     def CD_k(self, visibles, r, mask):
         '''Contrastive divergence with k steps of Gibbs Sampling.'''
+
         orig_hidden = self.sample_h_given_v(visibles, r)
         # k steps of alternating parallel updates
         for i in range(self.k):
@@ -107,14 +108,16 @@ class CondRBM:
         w_grad_pos = tf.einsum('ai,ajm->mji', orig_hidden, visibles)
         w_neg_grad = tf.einsum('ai,ajm->mji', hidden_samples, visible_samples)
         w_grad_tot = tf.subtract(w_grad_pos, w_neg_grad)
-        w_grad_tot = tf.einsum('i,ijk->ijk', user_rated, w_grad_tot)
+        # w_grad_tot = tf.einsum('i,ijk->ijk', user_rated, w_grad_tot)
 
         hb_grad = tf.reduce_mean(tf.subtract(orig_hidden, hidden_samples), axis=0)
+        hb_grad = tf.reduce_sum(tf.subtract(orig_hidden, hidden_samples), axis=0)
 
         vb_grad = tf.reduce_sum(tf.subtract(visibles, visible_samples), axis=0)
-        vb_grad = tf.einsum('i,ji->ji', user_rated, vb_grad)
+        # vb_grad = tf.einsum('i,ji->ji', user_rated, vb_grad)
 
-        D_grad = tf.einsum('bh,bm->mh', tf.subtract(orig_hidden, hidden_samples), r) / tf.to_float(tf.shape(visibles)[0])
+        # D_grad = tf.einsum('bh,bm->mh', tf.subtract(orig_hidden, hidden_samples), r) / tf.to_float(tf.shape(visibles)[0])
+        D_grad = tf.einsum('bh,bm->mh', tf.subtract(orig_hidden, hidden_samples), r)
 
         return w_grad_tot, hb_grad, vb_grad, D_grad
 
@@ -184,7 +187,7 @@ class CondRBM:
         # Computation graph definition
         batched_dataset = dataset.batch(self.batch_size)
         iterator = batched_dataset.make_one_shot_iterator()
-        optimizer = tf.train.MomentumOptimizer(0.01, 0.9)
+        optimizer = tf.contrib.opt.MomentumWOptimizer(0.001, 0.01 / self.batch_size, 0.9)
 
         # Main training loop, needs adjustments depending on how training data is handled
         #print(self.visible_bias)
