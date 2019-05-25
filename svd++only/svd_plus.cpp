@@ -164,6 +164,26 @@ vector<double> Model::predict() {
     return preds;
 }
 
+vector<double> Model::predict_valid() {
+
+    vector<double> preds;
+
+    while (this->params.Y_valid.hasNext()) {
+
+        NetflixData p = this->params.Y_valid.nextLine();
+        int user = p.user;
+        int movie = p.movie;
+
+        Col<double> u = this->U.col(user - 1);
+        Col<double> v = this->V.col(movie - 1);
+
+        double pred = GLOBAL_BIAS + dot(v, u + this->Y_norm.col(user - 1)) + this->b_u[user - 1] + this->b_i[movie-1];
+
+        preds.push_back(pred);
+    }
+    return preds;
+}
+
 void Model::update_y_vectors(int user, Col<double>* Vj, int e) {
     vector<int> movies = this->N_u[user - 1];
     int size = this->N_u_size[user - 1];
@@ -339,10 +359,10 @@ void Model::train() {
         this->params.Y_valid.reset();
 
         // // Early stopping
-        // if (prev_err < curr_err) {
-        //     cout << "Early stopping" << endl;
-        //     break;
-        // }
+        if (prev_err < curr_err) {
+             cout << "Early stopping" << endl;
+             break;
+         }
 
         prev_err = curr_err;
 
