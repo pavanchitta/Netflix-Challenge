@@ -87,10 +87,11 @@ class Model {
         string train_filename,
         string test_filename,
         string valid_filename,
-        double max_epochs = 50
+        double max_epochs = 100
      );
 
     vector<double> predict();
+    vector<double> predict_valid();
     double trainErr();
     double validErr();
     void train();

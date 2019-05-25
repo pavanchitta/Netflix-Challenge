@@ -36,32 +36,32 @@ void Model::grad_U(double del_common, Col<double> *Ui, Col<double> *Vj, int e) {
     // double eta = 0.008 * pow(0.9, e);
     // double reg = 0.0015;
 
-    double eta = 0.007;
-    double reg = 0.015;
+    double eta = 0.007 * pow(0.9, e);
+    double reg = 0.01;
     this->del_U = eta * ((reg * *Ui) - (*Vj) * del_common);
 }
 
 void Model::grad_V(double del_common, Col<double> *Ui, Col<double> *Vj, Col<double> *y_norm, int e) {
     // double eta = 0.008 * pow(0.9, e);
     // double reg = 0.0015;
-    double eta = 0.007;
-    double reg = 0.015;
+    double eta = 0.007 * pow(0.9, e);
+    double reg = 0.01;
     this->del_V = eta * ((reg * *Vj) - (*Ui + *y_norm)* del_common);
 }
 
 double Model::grad_b_u(double del_common, double b_u) {
-    // double eta = 2.67 * pow(10, -3);
-    // double reg = 2.55 * pow(10, -2);
-    double eta = 0.007;
-    double reg = 0.005;
+    double eta = 2.67 * pow(10, -3);
+    double reg = 2.55 * pow(10, -2);
+    // double eta = 0.007;
+    // double reg = 0.005;
     return -eta * del_common + eta * reg * b_u;
 }
 
 double Model::grad_b_i(double del_common, double b_i) {
-    // double eta = 0.488 * pow(10, -3);
-    // double reg = 2.55 * pow(10, -2);
-    double eta = 0.007;
-    double reg = 0.005;
+    double eta = 0.488 * pow(10, -3);
+    double reg = 2.55 * pow(10, -2);
+    // double eta = 0.007;
+    // double reg = 0.005;
     return -eta * del_common + eta * reg * b_i;
 }
 
@@ -164,12 +164,32 @@ vector<double> Model::predict() {
     return preds;
 }
 
+vector<double> Model::predict_valid() {
+
+    vector<double> preds;
+
+    while (this->params.Y_valid.hasNext()) {
+
+        NetflixData p = this->params.Y_valid.nextLine();
+        int user = p.user;
+        int movie = p.movie;
+
+        Col<double> u = this->U.col(user - 1);
+        Col<double> v = this->V.col(movie - 1);
+
+        double pred = GLOBAL_BIAS + dot(v, u + this->Y_norm.col(user - 1)) + this->b_u[user - 1] + this->b_i[movie-1];
+
+        preds.push_back(pred);
+    }
+    return preds;
+}
+
 void Model::update_y_vectors(int user, Col<double>* Vj, int e) {
     vector<int> movies = this->N_u[user - 1];
     int size = this->N_u_size[user - 1];
     // double eta = 0.008 * pow(0.9, e);
     // double reg = 0.0015;
-    double eta = 0.007;
+    double eta = 0.007 * pow(0.9, e);
     double reg = 0.01;
     Col<double> sum = Col<double>(this->params.K, fill::zeros);
     for (int movie : movies) {
@@ -339,10 +359,10 @@ void Model::train() {
         this->params.Y_valid.reset();
 
         // // Early stopping
-        // if (prev_err < curr_err) {
-        //     cout << "Early stopping" << endl;
-        //     break;
-        // }
+        if (prev_err < curr_err) {
+             cout << "Early stopping" << endl;
+             break;
+         }
 
         prev_err = curr_err;
 
