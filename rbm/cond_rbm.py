@@ -8,13 +8,13 @@ tfe = tf.contrib.eager
 class CondRBM:
     def __init__(self):
         self.n_visible = 17770
-        self.batch_size = 1000
+        self.batch_size = 1
         self.n_hidden = 100
         self.momentum = tf.constant(0.9)
         self.weight_decay = tf.constant(0.001)
         self.k = 1
         self.num_rat = 5
-        self.start_time = datetime.datetime.now() 
+        self.start_time = datetime.datetime.now()
         self.lr_weights = tf.constant(0.0015)
         self.lr_vb = tf.constant(0.0012)
         self.lr_hb = tf.constant(0.1)
@@ -209,6 +209,7 @@ class CondRBM:
 
             try:
                 while True:
+
                     r, x = self.get_rx(iterator)
                     x_hot = tf.one_hot(x, self.num_rat, axis=1)
                     grads = self.learn(x_hot, r)
@@ -257,7 +258,7 @@ class CondRBM:
                 test_preds = tf.gather_nd(curr_preds, row_batch.indices)
 
                 total_predictions = tf.concat([total_predictions, test_preds], 0)
-                r, x = self.get_rx(pred_iterator) 
+                r, x = self.get_rx(pred_iterator)
 
                 x_hot = tf.one_hot(x, self.num_rat, axis=1)
                 curr_preds = self.forward(x_hot, r, False)
@@ -273,12 +274,12 @@ class CondRBM:
 
     def pred_with_RMSE(self, test_set, pred_set):
         test_set = test_set.repeat(1)
-        test_set = test_set.batch(1280)
+        test_set = test_set.batch(1)
         test_iterator = test_set.make_one_shot_iterator()
-        pred_set = pred_set.batch(1280)
+        pred_set = pred_set.batch(1)
         pred_iterator = pred_set.make_one_shot_iterator()
 
-        r, x = self.get_rx(pred_iterator) 
+        r, x = self.get_rx(pred_iterator)
         x_hot = tf.one_hot(x, self.num_rat, axis=1)
         batch_count = 0
         curr_preds = self.forward(x_hot, r, False)
@@ -290,6 +291,7 @@ class CondRBM:
             while True:
                 row_batch = test_iterator.get_next()
                 test_preds = tf.gather_nd(curr_preds, row_batch.indices)
+                print(test_preds)
 
                 total_predictions = tf.concat([total_predictions, test_preds], 0)
                 actual = tf.concat([actual, row_batch.values], 0)
@@ -318,5 +320,4 @@ class CondRBM:
 
         mask = tf.where(tf.equal(reduced_visibles, 0), tf.zeros_like(reduced_visibles), tf.ones_like(reduced_visibles))
         mask = tf.stack([mask, mask, mask, mask, mask], axis=1)
-
         return tf.tensordot(scale, mask * visible_samples, [[1], [1]])[0]
