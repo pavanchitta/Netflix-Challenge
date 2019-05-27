@@ -56,6 +56,62 @@ vector<double> SVD::predict() {
     return preds;
 }
 
+vector<double> SVD::predict_train() {
+    vector<double> preds;
+    this->params.Y.reset();
+    while (this->params.Y.hasNext()) {
+        NetflixData p = this->params.Y.nextLine();
+        int user = p.user;
+        int movie = p.movie;
+        Col<double> u = this->U.col(user - 1);
+        Col<double> v = this->V.col(movie - 1);
+        double pred = this->params.mu + dot(u, v) + this->a[user - 1] + this->b[movie - 1];
+        preds.push_back(pred);
+    }
+    return preds;
+}
+
+
+vector<double> SVD::predict_probe() {
+    vector<double> preds;
+    this->params.Y_valid.reset();
+    while (this->params.Y_valid.hasNext()) {
+        NetflixData p = this->params.Y_valid.nextLine();
+        int user = p.user;
+        int movie = p.movie;
+        Col<double> u = this->U.col(user - 1);
+        Col<double> v = this->V.col(movie - 1);
+        double pred = this->params.mu + dot(u, v) + this->a[user - 1] + this->b[movie - 1];
+        preds.push_back(pred);
+    }
+    return preds;
+}
+
+void SVD::writeToFileKNN(string filename, vector<double> preds) {
+    ofstream out;
+    out.open(filename);
+
+    int i = 0;
+
+    this->params.Y.reset();
+    while (this->params.Y.hasNext()) {
+        NetflixData p = this->params.Y.nextLine();
+        int user = p.user;
+        int movie = p.movie;
+        int time = p.date;
+
+        out << setprecision(5) << user << " " << movie << " " << time << " " << preds[i] << "\n";
+        i++;
+    }
+    cout << "reached" << endl;
+    // return preds;
+    //
+    // for (auto val: preds) {
+    //     out << val << "\n";
+    // }
+    out.close();
+}
+
 double SVD::trainErr() {
     vector<vector<int> >::iterator ptr;
 

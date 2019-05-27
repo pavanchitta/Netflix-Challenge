@@ -81,10 +81,12 @@ class SVD {
         string valid_filename,
         double mu,
         double eps = 0.01,
-        double max_epochs = 200
+        double max_epochs = 1
      );
     vector<double> predict();
     vector<double> predict_probe();
+    vector<double> predict_train();
+    void writeToFileKNN(string filename, vector<double> preds);
     double trainErr();
     double validErr();
     void train();
