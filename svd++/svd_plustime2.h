@@ -189,6 +189,8 @@ class Model {
     double validErr();
     void train();
     void save(char *file);
+    void writeToFileKNN(string filename, vector<double> preds) ;
+    void predict_train();
     ~Model();
 
 };

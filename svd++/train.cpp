@@ -26,13 +26,17 @@ int main() {
     Model m(458293, 17770, K, eta, reg, train_filename, test_filename, valid_filename, all_filename);
     cout << "Starting training with " << K << " factors" << endl;
     m.train();
-    vector<double> preds = m.predict();
-    writeToFile("/Users/pavanchitta/CS156b-Netflix/svd_plustime_full_100k_007eta_yahuda_init.txt", preds);
+    vector<double> preds = m.predict_train();
+    m.writeToFileKNN("/Users/pavanchitta/CS156b-Netflix/svd_knn_train_probe_preds.txt", preds);
+    vector<double> preds2 = m.predict();
+    writeToFile("/Users/pavanchitta/CS156b-Netflix/svd_knn_test_preds_1.txt", preds2);
 
-    if (train_filename != "/Users/pavanchitta/CS156b-Netflix/data/um/train_probe.dta") {
-        vector<double> probe_preds = m.predict_probe();
-        writeToFile("/Users/pavanchitta/CS156b-Netflix/svd_probepreds_100k_007eta_yahuda_init.txt", probe_preds);
-    }
+    // writeToFile("/Users/pavanchitta/CS156b-Netflix/svd_plustime_full_100k_007eta_yahuda_init.txt", preds);
+    //
+    // if (train_filename != "/Users/pavanchitta/CS156b-Netflix/data/um/train_probe.dta") {
+    //     vector<double> probe_preds = m.predict_probe();
+    //     writeToFile("/Users/pavanchitta/CS156b-Netflix/svd_probepreds_100k_007eta_yahuda_init.txt", probe_preds);
+    // }
 
 
     return 0;
