@@ -21,7 +21,7 @@ def _user_parse_function(array):
     values = tf.add(split[1:][1::2], -1)
     dense_shape = [17770]
 
-    return {0: split[0], 1: tf.SparseTensor(indices=indices, values=values, dense_shape=dense_shape)}
+    return {0: split[0] - 1, 1: tf.SparseTensor(indices=indices, values=values, dense_shape=dense_shape)}
 
 def _test_parse_function(array):
     split = tf.strings.to_number(tf.string_split([array], " ").values, out_type=tf.dtypes.int64)
@@ -31,7 +31,7 @@ def _test_parse_function(array):
     values = split[1:][1::2]
     dense_shape = [17770]
 
-    return {0: split[0], 1: tf.SparseTensor(indices=indices, values=values, dense_shape=dense_shape)}
+    return {0: split[0] - 1, 1: tf.SparseTensor(indices=indices, values=values, dense_shape=dense_shape)}
 
 dset = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/train_4_qual_edited.dta")
 train_4_probe = tf.data.TextLineDataset("/Users/matthewzeitlin/Desktop/CS156b-Netflix/data_processing/train_4_pred_edited.dta")
