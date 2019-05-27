@@ -108,16 +108,16 @@ class CondRBM:
         w_grad_pos = tf.einsum('ai,ajm->mji', orig_hidden, visibles)
         w_neg_grad = tf.einsum('ai,ajm->mji', hidden_samples, visible_samples)
         w_grad_tot = tf.subtract(w_grad_pos, w_neg_grad)
-        # w_grad_tot = tf.einsum('i,ijk->ijk', user_rated, w_grad_tot)
+
+        w_grad_tot = tf.einsum('i,ijk->ijk', user_rated, w_grad_tot)
 
         hb_grad = tf.reduce_mean(tf.subtract(orig_hidden, hidden_samples), axis=0)
-        hb_grad = tf.reduce_sum(tf.subtract(orig_hidden, hidden_samples), axis=0)
 
         vb_grad = tf.reduce_sum(tf.subtract(visibles, visible_samples), axis=0)
-        # vb_grad = tf.einsum('i,ji->ji', user_rated, vb_grad)
+        vb_grad = tf.einsum('i,ji->ji', user_rated, vb_grad)
 
-        # D_grad = tf.einsum('bh,bm->mh', tf.subtract(orig_hidden, hidden_samples), r) / tf.to_float(tf.shape(visibles)[0])
         D_grad = tf.einsum('bh,bm->mh', tf.subtract(orig_hidden, hidden_samples), r)
+        D_grad = tf.einsum('i,ij->ij', user_rated, vb_grad)
 
         return w_grad_tot, hb_grad, vb_grad, D_grad
 
@@ -187,7 +187,7 @@ class CondRBM:
         # Computation graph definition
         batched_dataset = dataset.batch(self.batch_size)
         iterator = batched_dataset.make_one_shot_iterator()
-        optimizer = tf.contrib.opt.MomentumWOptimizer(0.001, 0.01 / self.batch_size, 0.9)
+        optimizer = tf.contrib.opt.MomentumWOptimizer(0.001, 0.01, 0.9)
 
         # Main training loop, needs adjustments depending on how training data is handled
         #print(self.visible_bias)
