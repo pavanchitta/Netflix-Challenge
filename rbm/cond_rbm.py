@@ -8,7 +8,7 @@ tfe = tf.contrib.eager
 class CondRBM:
     def __init__(self):
         self.n_visible = 17770
-        self.batch_size = 1
+        self.batch_size = 100
         self.n_hidden = 100
         self.momentum = tf.constant(0.9)
         self.weight_decay = tf.constant(0.001)
@@ -273,10 +273,10 @@ class CondRBM:
         return total_predictions
 
     def pred_with_RMSE(self, test_set, pred_set):
-        test_set = test_set.repeat(1)
-        test_set = test_set.batch(1)
+        test_set = test_set.repeat(1280)
+        test_set = test_set.batch(1280)
         test_iterator = test_set.make_one_shot_iterator()
-        pred_set = pred_set.batch(1)
+        pred_set = pred_set.batch(1280)
         pred_iterator = pred_set.make_one_shot_iterator()
 
         r, x = self.get_rx(pred_iterator)
