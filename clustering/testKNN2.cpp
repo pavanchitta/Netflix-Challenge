@@ -11,6 +11,7 @@
 #include <vector>
 #include <queue>
 #include <cmath>
+#include <assert.h>
 
 #define USER_CNT 458293
 #define MOVIE_CNT 17770
@@ -38,18 +39,18 @@ struct um_pair {
 };
 
 struct s_inter {
-    float x;            // sum of ratings of movie i
-    float y;            // sum of ratings of movie j
-    float xy;           // sum (rating_i * rating_j)
-    float xx;           // sum (rating_i^2)
-    float yy;           // sum (rating_j^2)
+    double x;            // sum of ratings of movie i
+    double y;            // sum of ratings of movie j
+    double xy;           // sum (rating_i * rating_j)
+    double xx;           // sum (rating_i^2)
+    double yy;           // sum (rating_j^2)
     unsigned int n;     // Num users who rated both movies
 };
 
 
 // To be stored in P
 struct s_pear {
-    float p;
+    double p;
     unsigned int common;
 };
 
@@ -61,17 +62,17 @@ struct s_neighbors {
     unsigned int common;
 
     // Avg rating of m, n
-    float m_avg;
-    float n_avg;
+    double m_avg;
+    double n_avg;
 
     // Rating of n
-    float n_rating;
+    double n_rating;
 
     // Pearson coeff
-    float pearson;
+    double pearson;
 
-    float p_lower;
-    float weight;
+    double p_lower;
+    double weight;
 };
 
 // Comparison operator for s_neighors
@@ -99,8 +100,8 @@ private:
     void outputRMSE(short numFeats);
     stringstream mdata;
 
-    float movieAvg[MOVIE_CNT];
-    float movieCount[MOVIE_CNT];
+    double movieAvg[MOVIE_CNT];
+    double movieCount[MOVIE_CNT];
 public:
     KNN();
     ~KNN() { };
@@ -131,7 +132,7 @@ void KNN::loadData() {
     int RATING_CNTs = 0;
     int avg = 0;
 
-    ifstream trainingDta ("/Users/aliboubezari/Desktop/CS/CS156b-Netflix/data/um/residuals.dta");
+    ifstream trainingDta ("/Users/pavanchitta/CS156b-Netflix/data/um/residuals.dta");
     if (trainingDta.fail()) {
         cout << "train.dta: Open failed.\n";
         exit(-1);
@@ -155,7 +156,7 @@ void KNN::loadData() {
     last_seen = 0;
 
     // Repeat again, now for mu dta
-    ifstream trainingDtaMu ("/Users/aliboubezari/Desktop/CS/CS156b-Netflix/data/um/residuals.dta");
+    ifstream trainingDtaMu ("/Users/pavanchitta/CS156b-Netflix/data/um/residuals.dta");
     if (trainingDtaMu.fail()) {
         cout << "train-mu.dta: Open failed.\n";
         exit(-1);
@@ -190,7 +191,7 @@ void KNN::calcP() {
     int i, j, u, m, user, z;
     double rmse, rmse_last;
     short movie;
-    float x, y, xy, xx, yy;
+    double x, y, xy, xx, yy;
     unsigned int n;
 
     double rating_i, rating_j;
@@ -206,7 +207,7 @@ void KNN::calcP() {
     rmse_last = 0;
     rmse = 2.0;
 
-    float tmp_f;
+    double tmp_f;
 
 
     // Compute intermediates
@@ -270,7 +271,7 @@ void KNN::calcP() {
             xx = tmp[z].xx;
             yy = tmp[z].yy;
             n = tmp[z].n;
-            if (n == 0) {
+            if (n == 0 || n == 1) {
                 P[i][z].p = 0;
             }
             else {
@@ -278,8 +279,19 @@ void KNN::calcP() {
 
                 // if NaN
                 if (tmp_f != tmp_f) {
+                    // cout << n << endl;
+                    // cout << "NAN" << endl;
                     tmp_f = 0.0;
                 }
+                // if (!(tmp_f >= -1 && tmp_f <= 1)) {
+                //     cout << tmp_f << endl;
+                //     cout << "Movie i " << i << " Movie z " << z << endl;
+                // }
+                // else {
+                //     cout << "Good value " << tmp_f << endl;
+                // }
+                //cout << tmp_f << endl;
+                //assert (tmp_f >= -1.0 && tmp_f <= 1.0);
                 P[i][z].p = tmp_f;
                 P[i][z].common = n;
             }
@@ -308,7 +320,7 @@ double KNN::predictRating(unsigned int movie, unsigned int user) {
 
     s_neighbors tmp_pair;
 
-    float p_lower, pearson;
+    double p_lower, pearson;
 
     int common_users;
 
@@ -383,23 +395,39 @@ double KNN::predictRating(unsigned int movie, unsigned int user) {
 
     // Now we can go ahead and calculate rating
     size = q.size();
+    //cout << "size " << size << endl;
     for (i = 0; i < size; i++) {
         tmp_pair = q.top();
         q.pop();
         diff = tmp_pair.n_rating - tmp_pair.n_avg;
+        //cout << "diff " << diff << endl;
         if (tmp_pair.pearson < 0) {
             diff = -diff;
         }
-        prediction += tmp_pair.pearson * (tmp_pair.m_avg + diff);
-        denom += tmp_pair.pearson;
+        //cout << "pearson " << tmp_pair.pearson << " m_avg " << tmp_pair.m_avg << endl;
+        prediction += tmp_pair.weight * (tmp_pair.m_avg + diff);
+        //cout << "pred" << prediction << endl;
+        denom += tmp_pair.weight;
 
     }
 
-    result = ((float) prediction) / denom;
+
+
+    result = ((double) prediction) / denom;
 
     // If result is nan, return avg
     if (result != result) {
-        return GLOBAL_AVG;
+        return tmp_pair.m_avg;
+    }
+
+    if (result > 5) {
+        cout << "prediction " << prediction << endl;
+        cout << "n_rating" << tmp_pair.n_rating << endl;
+        cout << "m_avg " << tmp_pair.m_avg << endl;
+        cout << "Result " << result << endl;
+        cout << "denom " << denom << endl;
+        cout << endl;
+        exit(1);
     }
     /*else if (result < 1) {
         return 1;
@@ -424,8 +452,8 @@ void KNN::output() {
 
     fname << "../results/output" << mdata.str();
 
-    ifstream qual ("/Users/aliboubezari/Desktop/CS/CS156b-Netflix/data/um/qual.dta");
-    ofstream out ("/Users/aliboubezari/Desktop/CS/CS156b-Netflix/KNNoutputs/test2");
+    ifstream qual ("/Users/pavanchitta/CS156b-Netflix/data/um/qual.dta");
+    ofstream out ("/Users/pavanchitta/CS156b-Netflix/clustering/test2.dta");
     if (qual.fail() || out.fail()) {
         cout << "qual.dta: Open failed.\n";
         exit(-1);
