@@ -7,15 +7,15 @@ tfe = tf.contrib.eager
 class RBM:
     def __init__(self):
         self.n_visible = 17770
-        self.batch_size = 1000
+        self.batch_size = 128
         self.n_hidden = 100
         self.momentum = tf.constant(0.9)
         self.weight_decay = tf.constant(0.0)
         self.k = 1
         self.num_rat = 5
-        self.lr_weights = tf.constant(0.0005)
-        self.lr_vb = tf.constant(0.0005)
-        self.lr_hb = tf.constant(0.01)
+        self.lr_weights = tf.constant(0.0015)
+        self.lr_vb = tf.constant(0.0015)
+        self.lr_hb = tf.constant(0.1)
 
         self.anneal = False
         self.anneal_val = tf.constant(0.0)
@@ -111,11 +111,21 @@ class RBM:
         # w_grad_tot = tf.stack([w_grad_tot, w_grad_tot, w_grad_tot, w_grad_tot, w_grad_tot], axis=1)
         # Bias gradients
         # hb_grad = tf.reduce_mean(tf.subtract(orig_hidden, hidden_samples), axis=0)
-        hb_grad_tot = tf.zeros((self.num_users, self.n_hidden))
-        hb_grad = tf.subtract(orig_hidden, hidden_samples)
-        for i in range(tf.shape(users)):
 
-            hb_grad_tot[users[i]] = hb_grad[i]
+
+
+        curr_hidden_bias = tf.batch_gather(self.hidden_bias, users)
+
+
+
+        hb_grad = tf.subtract(orig_hidden, hidden_samples)
+
+
+
+        tf.scatter_update(self.hidden_bias, users, tf.add(curr_hidden_bias, tf.scalar_mul(self.lr_hb, hb_grad)))
+
+
+
 
 
         #hb_grad = tf.reduce_sum(tf.subtract(orig_hidden, hidden_samples), axis=0)
@@ -123,7 +133,7 @@ class RBM:
         vb_grad = tf.reduce_sum(tf.subtract(visibles, visible_samples), axis=0)
         # vb_grad = tf.einsum('i,ji->ji', user_rated, vb_grad)
 
-        return w_grad_tot, hb_grad_tot, vb_grad
+        return w_grad_tot, vb_grad
 
     def learn(self, visibles, users):
 
@@ -132,10 +142,10 @@ class RBM:
         mask = tf.where(tf.equal(reduced_visibles, 0), tf.zeros_like(reduced_visibles), tf.ones_like(reduced_visibles))
         mask = tf.stack([mask, mask, mask, mask, mask], axis=1)
 
-        weight_grad, hidden_bias_grad, visible_bias_grad = self.CD_k(visibles, mask, users)
+        weight_grad, visible_bias_grad = self.CD_k(visibles, mask, users)
 
         # return [weight_grad, hidden_bias_grad, visible_bias_grad]
-        return [tf.math.negative(weight_grad), tf.math.negative(hidden_bias_grad), tf.math.negative(visible_bias_grad)]
+        return [tf.math.negative(weight_grad), tf.math.negative(visible_bias_grad)]
 
         # Compute new velocities
         # new_w_v = self.momentum * self.w_v + self.lr * weight_grad
@@ -207,11 +217,11 @@ class RBM:
 
                     x_hot = tf.one_hot(x, self.num_rat, axis=1)
                     grads = self.learn(x_hot, user)
-                    optimizer.apply_gradients(zip(grads, [self.weights, self.hidden_bias, self.visible_bias]))
+                    optimizer.apply_gradients(zip(grads, [self.weights, self.visible_bias]))
                     # self.apply_gradients(grads)
                     num_pts += 1
                     train_rmse = tf.sqrt( tf.scalar_mul(1 / tf.to_float(tf.count_nonzero(tf.add(x, 1))),
-                        tf.reduce_sum(tf.square(tf.subtract(self.forward(x_hot), tf.to_float(tf.add(x, 1)))))))
+                        tf.reduce_sum(tf.square(tf.subtract(self.forward(x_hot, user), tf.to_float(tf.add(x, 1)))))))
                     prog_bar.update(self.batch_size * num_pts, [("train_rmse", train_rmse)])
             except tf.errors.OutOfRangeError:
                 ds = dataset.shuffle(460000)
@@ -251,7 +261,7 @@ class RBM:
         try:
             while True:
                 row_batch = test_iterator.get_next()
-                test_preds = tf.gather_nd(curr_preds, row_batch.indices)
+                test_preds = tf.gather_nd(curr_preds, row_batch[1].indices)
 
                 total_predictions = tf.concat([total_predictions, test_preds], 0)
                 training_point = pred_iterator.get_next()
@@ -292,10 +302,10 @@ class RBM:
                 batch_count += 1
 
                 row_batch = test_iterator.get_next()
-                test_preds = tf.gather_nd(curr_preds, row_batch.indices)
+                test_preds = tf.gather_nd(curr_preds, row_batch[1].indices)
 
                 total_predictions = tf.concat([total_predictions, test_preds], 0)
-                actual = tf.concat([actual, row_batch.values], 0)
+                actual = tf.concat([actual, row_batch[1].values], 0)
                 batch_count += self.batch_size
                 training_point = pred_iterator.get_next()
                 x = tf.sparse.to_dense(training_point[1], default_value = -1)
