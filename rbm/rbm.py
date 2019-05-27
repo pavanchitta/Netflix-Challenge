@@ -111,7 +111,7 @@ class RBM:
         # w_grad_tot = tf.stack([w_grad_tot, w_grad_tot, w_grad_tot, w_grad_tot, w_grad_tot], axis=1)
         # Bias gradients
         # hb_grad = tf.reduce_mean(tf.subtract(orig_hidden, hidden_samples), axis=0)
-        
+
 
 
         curr_hidden_bias = tf.batch_gather(self.hidden_bias, users)
@@ -261,7 +261,7 @@ class RBM:
         try:
             while True:
                 row_batch = test_iterator.get_next()
-                test_preds = tf.gather_nd(curr_preds, row_batch.indices)
+                test_preds = tf.gather_nd(curr_preds, row_batch[1].indices)
 
                 total_predictions = tf.concat([total_predictions, test_preds], 0)
                 training_point = pred_iterator.get_next()
@@ -302,10 +302,10 @@ class RBM:
                 batch_count += 1
 
                 row_batch = test_iterator.get_next()
-                test_preds = tf.gather_nd(curr_preds, row_batch.indices)
+                test_preds = tf.gather_nd(curr_preds, row_batch[1].indices)
 
                 total_predictions = tf.concat([total_predictions, test_preds], 0)
-                actual = tf.concat([actual, row_batch.values], 0)
+                actual = tf.concat([actual, row_batch[1].values], 0)
                 batch_count += self.batch_size
                 training_point = pred_iterator.get_next()
                 x = tf.sparse.to_dense(training_point[1], default_value = -1)
