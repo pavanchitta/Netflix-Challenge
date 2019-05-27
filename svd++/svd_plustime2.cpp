@@ -435,14 +435,20 @@ void Model::writeToFileKNN(string filename, vector<double> preds) {
 
 vector<double> Model::predict_train() {
     vector<double> preds;
+
     this->params.Y.reset();
+
     while (this->params.Y.hasNext()) {
+
         NetflixData p = this->params.Y.nextLine();
         int user = p.user;
         int movie = p.movie;
-        Col<double> u = this->U.col(user - 1);
-        Col<double> v = this->V.col(movie - 1);
-        double pred = this->params.mu + dot(u, v) + this->a[user - 1] + this->b[movie - 1];
+        int time = p.date;
+        //int freq = this->f_ui(user - 1, time);
+        int bin = time / DAYS_PER_BIN;
+
+        double pred = this->predict_rating(user, movie, time);
+
         preds.push_back(pred);
     }
     return preds;
