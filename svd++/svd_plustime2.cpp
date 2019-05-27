@@ -413,7 +413,7 @@ void Model::compute_y_norm(int user) {
     this->Y_norm.col(user - 1) = pow(size, -0.5) * sum;
 }
 
-void SVD::writeToFileKNN(string filename, vector<double> preds) {
+void Model::writeToFileKNN(string filename, vector<double> preds) {
     ofstream out;
     out.open(filename);
 
@@ -433,7 +433,7 @@ void SVD::writeToFileKNN(string filename, vector<double> preds) {
     out.close();
 }
 
-vector<double> SVD::predict_train() {
+vector<double> Model::predict_train() {
     vector<double> preds;
     this->params.Y.reset();
     while (this->params.Y.hasNext()) {

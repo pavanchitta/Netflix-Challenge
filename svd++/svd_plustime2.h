@@ -180,7 +180,7 @@ class Model {
         string test_filename,
         string valid_filename,
         string all_filename,
-        double max_epochs = 30
+        double max_epochs = 10
      );
 
     vector<double> predict();

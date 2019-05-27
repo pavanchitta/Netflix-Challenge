@@ -16,10 +16,10 @@ void writeToFile(string filename, vector<double> preds) {
 }
 
 int main() {
-    string all_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/all.dta";
-    string train_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/train_probe.dta";
-    string test_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/qual.dta";
-    string valid_filename = "/Users/pavanchitta/CS156b-Netflix/data/um/probe.dta";
+    string all_filename = "../data/um/all.dta";
+    string train_filename = "../data/um/train_probe.dta";
+    string test_filename = "../data/um/qual.dta";
+    string valid_filename = "../data/um/probe.dta";
     int K = 100;
     double eta = 0.007;
     double reg = 0.01;
@@ -27,9 +27,9 @@ int main() {
     cout << "Starting training with " << K << " factors" << endl;
     m.train();
     vector<double> preds = m.predict_train();
-    m.writeToFileKNN("/Users/pavanchitta/CS156b-Netflix/svd_knn_train_probe_preds.txt", preds);
+    m.writeToFileKNN("../timesvd_knn_train_probe_preds.txt", preds);
     vector<double> preds2 = m.predict();
-    writeToFile("/Users/pavanchitta/CS156b-Netflix/svd_knn_test_preds_1.txt", preds2);
+    writeToFile("../timesvd_knn_test_preds.txt", preds2);
 
     // writeToFile("/Users/pavanchitta/CS156b-Netflix/svd_plustime_full_100k_007eta_yahuda_init.txt", preds);
     //
