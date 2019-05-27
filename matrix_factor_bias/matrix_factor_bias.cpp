@@ -104,10 +104,15 @@ void SVD::train() {
     this->del_U = Col<double>(this->params.K, fill::zeros);
     this->del_V = Col<double>(this->params.K, fill::zeros);
 
-    this->U -= 0.5;
-    this->V -= 0.5;
-    this->a -= 0.5;
-    this->b -= 0.5;
+    // this->U -= 0.5;
+    // this->V -= 0.5;
+    // this->a -= 0.5;
+    // this->b -= 0.5;
+
+    this->U /= 700;
+    this->V /= 700;
+    this->a /= 700;
+    this->b /= 700;
 
     double prev_err = validErr();
     double curr_err = 0.0;
@@ -150,10 +155,11 @@ void SVD::train() {
         this->params.Y_valid.reset();
         this->params.Y.reset();
 
-        // Early stopping
-        // if (prev_err < curr_err) {
-        //     break;
-        // }
+        //Early stopping
+        if (prev_err < curr_err) {
+            cout << "Early Stopping" << endl;
+            break;
+        }
 
         prev_err = curr_err;
         // cout << "Error " << trainErr() << endl;

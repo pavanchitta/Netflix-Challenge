@@ -84,6 +84,7 @@ class SVD {
         double max_epochs = 200
      );
     vector<double> predict();
+    vector<double> predict_probe();
     double trainErr();
     double validErr();
     void train();
