@@ -117,7 +117,7 @@ class CondRBM:
         vb_grad = tf.einsum('i,ji->ji', user_rated, vb_grad)
 
         D_grad = tf.einsum('bh,bm->mh', tf.subtract(orig_hidden, hidden_samples), r)
-        D_grad = tf.einsum('i,ij->ij', user_rated, vb_grad)
+        D_grad = tf.einsum('i,ij->ij', user_rated, D_grad)
 
         return w_grad_tot, hb_grad, vb_grad, D_grad
 
